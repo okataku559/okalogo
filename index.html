@@ -115,8 +115,8 @@
           ログイン
         </button>
         <hr class="my-2 border-gray-200">
-        <!-- ▼ 管理者のメールアドレスに変更してください ▼ -->
-        <a href="mailto:your-email@example.com?subject=【おかログ】編集権限の申請&body=おかログにお店を追加したいです。%0D%0A編集用の合言葉を教えてください！" class="text-center text-sm text-blue-600 hover:underline flex items-center justify-center gap-1">
+        <!-- 暗号化されたメールリンク -->
+        <a href="#" id="btn-request-mail" class="text-center text-sm text-blue-600 hover:underline flex items-center justify-center gap-1">
           <i data-lucide="mail" class="w-4 h-4"></i> 管理者に合言葉をリクエストする
         </a>
       </div>
@@ -203,10 +203,10 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // --- 権限管理 (パスワード設定) ---
-    // ここでお好きな合言葉に変更できます！
-    const ADMIN_PASSWORD = "admin"; // 管理者用合言葉（削除ができる）
-    const EDITOR_PASSWORD = "edit"; // 編集者用合言葉（追加・編集・削除依頼ができる）
+    // --- 権限管理 (難読化済みパスワード) ---
+    // ソースコードから直接見えないようにBase64エンコードで変換しています
+    const KEY_A = "b2thdGFrdTE5ODQ="; // 管理者
+    const KEY_E = "b2thdGFrdUZyaWVuZA=="; // 編集者
     
     // 現在の権限ステータス ('viewer', 'editor', 'admin')
     let currentRole = localStorage.getItem('okalogo_role') || 'viewer';
@@ -445,13 +445,15 @@
 
     document.getElementById('btn-submit-login').addEventListener('click', () => {
       const pwd = document.getElementById('password-input').value;
-      if (pwd === ADMIN_PASSWORD) {
+      const encodedPwd = btoa(pwd); // 入力されたパスワードをエンコードして比較
+      
+      if (encodedPwd === KEY_A) {
         currentRole = 'admin';
         localStorage.setItem('okalogo_role', 'admin');
         loginModal.classList.add('hidden');
         updateUIByRole();
         renderList();
-      } else if (pwd === EDITOR_PASSWORD) {
+      } else if (encodedPwd === KEY_E) {
         currentRole = 'editor';
         localStorage.setItem('okalogo_role', 'editor');
         loginModal.classList.add('hidden');
@@ -460,6 +462,16 @@
       } else {
         document.getElementById('login-error').classList.remove('hidden');
       }
+    });
+
+    // メールリクエストボタンの処理 (メアドをソースに直接書かないスパム対策)
+    document.getElementById('btn-request-mail').addEventListener('click', (e) => {
+      e.preventDefault();
+      // メアドをプログラム実行時に復号化します
+      const m = atob('dGFrdXlhLm9rYXphd2FAZ21haWwuY29t');
+      const s = encodeURIComponent('【おかログ】編集権限の申請');
+      const b = encodeURIComponent('おかログにお店を追加したいです。\n編集用の合言葉を教えてください！');
+      window.location.href = `mailto:${m}?subject=${s}&body=${b}`;
     });
 
     btnLogout.addEventListener('click', () => {
