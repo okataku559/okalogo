@@ -143,18 +143,30 @@
           
           <div class="flex gap-4">
             <div class="flex-1">
-              <label class="block text-sm font-medium text-gray-700 mb-1">ジャンル</label>
-              <input type="text" id="form-genre" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="例: 定食・和食系">
+              <label class="block text-sm font-medium text-gray-700 mb-1">ジャンル <span class="text-red-500">*</span></label>
+              <!-- ▼ ジャンルをプルダウンに変更 ▼ -->
+              <select required id="form-genre" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none">
+                <option value="">選択してください</option>
+                <option value="定食・和食系">定食・和食系</option>
+                <option value="洋食・中華系">洋食・中華系</option>
+                <option value="麺類">麺類</option>
+                <option value="カフェ・軽食">カフェ・軽食</option>
+                <option value="焼肉・ホルモン">焼肉・ホルモン</option>
+                <option value="居酒屋・バー">居酒屋・バー</option>
+                <option value="寿司・海鮮">寿司・海鮮</option>
+                <option value="その他">その他</option>
+              </select>
             </div>
             <div class="flex-1">
-              <label class="block text-sm font-medium text-gray-700 mb-1">エリア</label>
-              <input type="text" id="form-area" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="例: 大阪府大阪市">
+              <label class="block text-sm font-medium text-gray-700 mb-1">エリア (自動反映)</label>
+              <!-- ▼ エリアは住所から自動反映されるため、入力不可（readonly）に ▼ -->
+              <input type="text" id="form-area" readonly class="w-full border-gray-200 rounded-md shadow-sm p-2 bg-gray-100 text-gray-500 border outline-none cursor-not-allowed" placeholder="住所を入れると反映されます">
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">住所</label>
-            <input type="text" id="form-address" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="例: 大阪府大阪市北区...">
+            <label class="block text-sm font-medium text-gray-700 mb-1">住所 <span class="text-red-500">*</span></label>
+            <input required type="text" id="form-address" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="例: 大阪府大阪市北区...">
           </div>
 
           <div>
@@ -163,18 +175,40 @@
           </div>
 
           <div>
+            <!-- ▼ 満足度を★で選択できるように変更 ▼ -->
+            <label class="block text-sm font-medium text-gray-700 mb-2">満足度</label>
+            <div class="flex gap-2 items-center">
+              <div id="form-taste-container" class="flex gap-1">
+                <button type="button" data-val="1" class="taste-star text-gray-300 hover:scale-110 transition-transform"><i data-lucide="star" class="w-8 h-8 pointer-events-none fill-current"></i></button>
+                <button type="button" data-val="2" class="taste-star text-gray-300 hover:scale-110 transition-transform"><i data-lucide="star" class="w-8 h-8 pointer-events-none fill-current"></i></button>
+                <button type="button" data-val="3" class="taste-star text-gray-300 hover:scale-110 transition-transform"><i data-lucide="star" class="w-8 h-8 pointer-events-none fill-current"></i></button>
+                <button type="button" data-val="4" class="taste-star text-gray-300 hover:scale-110 transition-transform"><i data-lucide="star" class="w-8 h-8 pointer-events-none fill-current"></i></button>
+                <button type="button" data-val="5" class="taste-star text-gray-300 hover:scale-110 transition-transform"><i data-lucide="star" class="w-8 h-8 pointer-events-none fill-current"></i></button>
+              </div>
+              <span id="taste-label" class="ml-2 text-sm text-gray-500 font-medium">未評価</span>
+            </div>
+            <input type="hidden" id="form-taste" value="0">
+          </div>
+
+          <div>
+            <!-- ▼ おすすめのシーンを複数選択（チェックボックス）に変更 ▼ -->
+            <label class="block text-sm font-medium text-gray-700 mb-2">おすすめのシーン（複数選択可）</label>
+            <div class="flex flex-wrap gap-3">
+              <label class="flex items-center gap-2 cursor-pointer bg-white border border-gray-300 px-3 py-2 rounded-md hover:bg-orange-50 transition-colors"><input type="checkbox" value="デート" class="scene-cb w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500"> <span class="text-sm font-medium text-gray-700">デート</span></label>
+              <label class="flex items-center gap-2 cursor-pointer bg-white border border-gray-300 px-3 py-2 rounded-md hover:bg-orange-50 transition-colors"><input type="checkbox" value="接待" class="scene-cb w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500"> <span class="text-sm font-medium text-gray-700">接待</span></label>
+              <label class="flex items-center gap-2 cursor-pointer bg-white border border-gray-300 px-3 py-2 rounded-md hover:bg-orange-50 transition-colors"><input type="checkbox" value="大人数" class="scene-cb w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500"> <span class="text-sm font-medium text-gray-700">大人数</span></label>
+              <label class="flex items-center gap-2 cursor-pointer bg-white border border-gray-300 px-3 py-2 rounded-md hover:bg-orange-50 transition-colors"><input type="checkbox" value="家族（子供と）" class="scene-cb w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500"> <span class="text-sm font-medium text-gray-700">家族（子供と）</span></label>
+            </div>
+          </div>
+
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">特徴・メモ</label>
             <textarea id="form-features" rows="3" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="おしゃれ、落ち着く、など"></textarea>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1">評価・味（任意）</label>
-            <input type="text" id="form-taste" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="例: 5, 美味い, 辛旨 など">
-          </div>
-
-          <div class="mt-4 flex gap-3 justify-end">
+          <div class="mt-4 flex gap-3 justify-end pt-4 border-t border-gray-100">
             <button type="button" id="btn-cancel" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium transition-colors">キャンセル</button>
-            <button type="submit" class="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 font-medium transition-colors">保存する</button>
+            <button type="submit" class="px-6 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 font-medium transition-colors shadow-sm">保存する</button>
           </div>
         </form>
       </div>
@@ -268,6 +302,7 @@
     });
 
     // --- Core Functions ---
+    // 住所またはエリアから「都道府県」を抽出
     function extractPrefecture(area) {
       if (!area) return '';
       const match = area.match(/(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/);
@@ -280,6 +315,47 @@
 
       return 'その他';
     }
+
+    // 住所から「都道府県＋市区町村」を自動抽出（フォーム用）
+    function extractAreaFromAddress(address) {
+      if (!address) return '';
+      const match = address.match(/^(.{2,3}?[都道府県])?(.+?[市区町村])/);
+      if (match) {
+        return (match[1] || '') + match[2]; // 例: 大阪府 + 大阪市
+      }
+      // マッチしない場合は最初のスペースまでをエリアとする
+      const spaceIndex = address.search(/[\s　]/);
+      return spaceIndex > -1 ? address.substring(0, spaceIndex) : address;
+    }
+
+    // 住所入力時に自動でエリアをセットするイベント
+    document.getElementById('form-address').addEventListener('input', (e) => {
+      document.getElementById('form-area').value = extractAreaFromAddress(e.target.value);
+    });
+
+    // ★満足度の星を光らせる処理
+    const tasteStars = document.querySelectorAll('.taste-star');
+    const tasteInput = document.getElementById('form-taste');
+    const tasteLabel = document.getElementById('taste-label');
+
+    function updateStars(val) {
+      tasteInput.value = val;
+      tasteLabel.textContent = val > 0 ? `星 ${val}` : '未評価';
+      tasteStars.forEach(star => {
+        const starVal = parseInt(star.dataset.val);
+        if (starVal <= val) {
+          star.classList.replace('text-gray-300', 'text-yellow-500');
+        } else {
+          star.classList.replace('text-yellow-500', 'text-gray-300');
+        }
+      });
+    }
+
+    tasteStars.forEach(star => {
+      star.addEventListener('click', (e) => {
+        updateStars(parseInt(e.currentTarget.dataset.val));
+      });
+    });
 
     function updateFiltersOptions() {
       const prefs = [...new Set(restaurants.map(r => r.pref).filter(Boolean))].sort();
@@ -296,7 +372,6 @@
     }
 
     function updateUIByRole() {
-      // 権限バッジとボタンの表示切り替え
       if (currentRole === 'admin') {
         roleBadge.textContent = '管理者モード';
         roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-red-100 text-red-700 border border-red-200';
@@ -366,6 +441,27 @@
 
           let deleteBadge = r.deleteRequested && currentRole === 'admin' ? `<span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-bold flex items-center gap-1 border border-red-200"><i data-lucide="alert-circle" class="w-3 h-3"></i> 削除依頼あり</span>` : '';
 
+          // ★満足度を星アイコンで表示
+          let starsHtml = '';
+          const tasteNum = parseInt(r.taste);
+          if (tasteNum > 0 && tasteNum <= 5) {
+            starsHtml = `<span class="bg-yellow-50 text-yellow-800 text-xs px-2 py-1 rounded-md border border-yellow-200 font-medium flex items-center gap-1">満足度: <span class="flex">`;
+            for(let i=0; i<tasteNum; i++) starsHtml += `<i data-lucide="star" class="w-3 h-3 fill-yellow-500 text-yellow-500"></i>`;
+            starsHtml += `</span></span>`;
+          } else if (r.taste && r.taste !== "0") {
+             starsHtml = `<span class="bg-yellow-50 text-yellow-800 text-xs px-2 py-1 rounded-md border border-yellow-200 font-medium flex items-center gap-1">満足度: ${r.taste}</span>`;
+          }
+
+          // ★おすすめシーンをタグで表示
+          let scenesHtml = '';
+          if (r.scenes && r.scenes.length > 0) {
+            scenesHtml = `<div class="flex flex-wrap gap-1 mt-2">`;
+            r.scenes.forEach(scene => {
+              scenesHtml += `<span class="bg-green-50 text-green-700 text-[11px] px-2 py-0.5 rounded border border-green-200"><i data-lucide="check-circle" class="inline w-3 h-3 mr-0.5"></i>${scene}</span>`;
+            });
+            scenesHtml += `</div>`;
+          }
+
           return `
             <div class="restaurant-card p-4 rounded-lg border cursor-pointer transition-all ${bgClass}" data-id="${r.id}">
               <div class="flex justify-between items-start gap-2">
@@ -375,8 +471,9 @@
               <div class="flex flex-wrap gap-2 mt-2">
                 ${r.genre ? `<span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-md">${r.genre}</span>` : ''}
                 ${r.area ? `<span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-md">${r.area}</span>` : ''}
-                ${r.taste ? `<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-md font-medium">評価: ${r.taste}</span>` : ''}
+                ${starsHtml}
               </div>
+              ${scenesHtml}
               ${r.features ? `<p class="text-sm text-gray-600 mt-3 bg-gray-50 p-2 rounded border border-gray-100">${r.features}</p>` : ''}
               ${actionButtons}
             </div>
@@ -421,13 +518,37 @@
       document.getElementById('form-address').value = data?.address || '';
       document.getElementById('form-url').value = data?.url || '';
       document.getElementById('form-features').value = data?.features || '';
-      document.getElementById('form-taste').value = data?.taste || '';
+      
+      // 星の復元
+      updateStars(data?.taste ? parseInt(data.taste) : 0);
+
+      // シーンの復元
+      const sceneCbs = document.querySelectorAll('.scene-cb');
+      const dataScenes = data?.scenes || [];
+      sceneCbs.forEach(cb => {
+        cb.checked = dataScenes.includes(cb.value);
+        // 見た目のためのクラス付与
+        if(cb.checked) {
+           cb.parentElement.classList.add('bg-orange-50', 'border-orange-500');
+           cb.parentElement.classList.remove('bg-white', 'border-gray-300');
+        } else {
+           cb.parentElement.classList.remove('bg-orange-50', 'border-orange-500');
+           cb.parentElement.classList.add('bg-white', 'border-gray-300');
+        }
+      });
+
       modal.classList.remove('hidden');
     }
 
     function closeModal() {
       modal.classList.add('hidden');
       form.reset();
+      updateStars(0);
+      const sceneCbs = document.querySelectorAll('.scene-cb');
+      sceneCbs.forEach(cb => {
+        cb.parentElement.classList.remove('bg-orange-50', 'border-orange-500');
+        cb.parentElement.classList.add('bg-white', 'border-gray-300');
+      });
     }
 
     // --- Event Listeners ---
@@ -499,6 +620,19 @@
     document.getElementById('btn-close-modal').addEventListener('click', closeModal);
     document.getElementById('btn-cancel').addEventListener('click', closeModal);
 
+    // シーンのチェックボックスの見た目変更
+    document.querySelectorAll('.scene-cb').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        if(e.target.checked) {
+           e.target.parentElement.classList.add('bg-orange-50', 'border-orange-500');
+           e.target.parentElement.classList.remove('bg-white', 'border-gray-300');
+        } else {
+           e.target.parentElement.classList.remove('bg-orange-50', 'border-orange-500');
+           e.target.parentElement.classList.add('bg-white', 'border-gray-300');
+        }
+      });
+    });
+
     // List Click Delegation
     listEl.addEventListener('click', async (e) => {
       const card = e.target.closest('.restaurant-card');
@@ -533,6 +667,11 @@
     // Form Submit
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      
+      // 選択されたシーンを取得
+      const sceneCbs = document.querySelectorAll('.scene-cb:checked');
+      const scenes = Array.from(sceneCbs).map(cb => cb.value);
+
       const id = document.getElementById('form-id').value || crypto.randomUUID();
       const payload = {
         id,
@@ -543,6 +682,7 @@
         url: document.getElementById('form-url').value,
         features: document.getElementById('form-features').value,
         taste: document.getElementById('form-taste').value,
+        scenes: scenes, // シーンを追加
         updatedAt: new Date().toISOString()
       };
       
