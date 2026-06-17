@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>おかログ</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-gray-50 font-sans min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-white shadow-sm border-b px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div class="flex items-center gap-2">
+      <i data-lucide="utensils" class="text-orange-500 w-7 h-7"></i>
+      <h1 class="text-2xl font-bold text-gray-800 tracking-tight">おかログ</h1>
+    </div>
+    <div class="flex items-center gap-4 bg-gray-100 p-1.5 rounded-lg border">
+      <span class="text-sm text-gray-600 font-medium px-2">現在の権限:</span>
+      <button id="btn-admin" class="px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-orange-500 text-white shadow">管理者</button>
+      <button id="btn-editor" class="px-3 py-1.5 rounded-md text-sm font-bold transition-colors text-gray-500 hover:bg-gray-200">編集者</button>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="flex-1 flex flex-col lg:flex-row max-w-screen-2xl w-full mx-auto p-4 gap-4">
+    
+    <!-- Left Column: Filters & List -->
+    <div class="w-full lg:w-1/2 flex flex-col gap-4">
+      
+      <!-- Controls -->
+      <div class="bg-white p-4 rounded-xl shadow-sm border flex flex-col sm:flex-row gap-3">
+        <div class="flex-1">
+          <label class="block text-xs font-semibold text-gray-500 mb-1">エリア</label>
+          <select id="filter-area" class="w-full border-gray-300 rounded-lg shadow-sm p-2 bg-gray-50 focus:ring-orange-500 focus:border-orange-500 outline-none border">
+            <option value="">すべてのエリア</option>
+          </select>
+        </div>
+        <div class="flex-1">
+          <label class="block text-xs font-semibold text-gray-500 mb-1">ジャンル</label>
+          <select id="filter-genre" class="w-full border-gray-300 rounded-lg shadow-sm p-2 bg-gray-50 focus:ring-orange-500 focus:border-orange-500 outline-none border">
+            <option value="">すべてのジャンル</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="btn-add" class="w-full sm:w-auto bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors">
+            <i data-lucide="plus" class="w-5 h-5"></i> お店を追加
+          </button>
+        </div>
+      </div>
+
+      <!-- List -->
+      <div class="bg-white rounded-xl shadow-sm border overflow-hidden flex-1 flex flex-col">
+        <div class="p-4 border-b bg-gray-50/50 flex justify-between items-center">
+          <h2 class="font-bold text-gray-700">登録店舗 (<span id="list-count">0</span>件)</h2>
+          <span class="text-xs text-gray-500">リストを押すと地図が移動します</span>
+        </div>
+        <div class="overflow-y-auto max-h-[500px] lg:max-h-[calc(100vh-250px)] p-2">
+          <div id="restaurant-list" class="flex flex-col gap-2">
+            <!-- 読み込み中表示 -->
+            <div class="text-center text-gray-400 py-10">読み込み中...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Map & Details -->
+    <div class="w-full lg:w-1/2 flex flex-col gap-4">
+      <div class="bg-white rounded-xl shadow-sm border overflow-hidden flex-1 min-h-[400px] lg:min-h-0 flex flex-col relative">
+        <!-- Map Iframe -->
+        <div class="flex-1 bg-gray-200 relative">
+          <iframe id="map-frame" title="Google Maps" width="100%" height="100%" style="border: 0;" loading="lazy" allowfullscreen src="https://maps.google.com/maps?q=大阪&t=&z=11&ie=UTF8&iwloc=&output=embed"></iframe>
+        </div>
+        <!-- Address Details -->
+        <div class="bg-white p-4 border-t flex items-start gap-3">
+          <i data-lucide="map-pin" class="text-orange-500 mt-1 flex-shrink-0 w-6 h-6"></i>
+          <div id="map-details" class="flex-1">
+            <div class="text-gray-500 text-sm mt-1">リストからお店を選択すると、ここに詳細な地図が表示されます。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Form Modal -->
+  <div id="form-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+        <h2 id="form-title" class="font-bold text-lg text-gray-800">お店情報の編集</h2>
+        <button id="btn-close-modal" class="text-gray-500 hover:bg-gray-200 p-1 rounded-full transition-colors">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-6 overflow-y-auto flex-1">
+        <form id="restaurant-form" class="flex flex-col gap-4">
+          <input type="hidden" id="form-id">
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">店名 <span class="text-red-500">*</span></label>
+            <input required type="text" id="form-name" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="例: カフェ・〇〇">
+          </div>
+          
+          <div class="flex gap-4">
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">ジャンル</label>
+              <input type="text" id="form-genre" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="例: 定食・和食系">
+            </div>
+            <div class="flex-1">
+              <label class="block text-sm font-medium text-gray-700 mb-1">エリア</label>
+              <input type="text" id="form-area" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="例: 大阪府大阪市">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">住所</label>
+            <input type="text" id="form-address" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="例: 大阪府大阪市北区...">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">URL (食べログや公式サイト)</label>
+            <input type="url" id="form-url" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="https://...">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">特徴・メモ</label>
+            <textarea id="form-features" rows="3" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="おしゃれ、落ち着く、など"></textarea>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">評価・味（任意）</label>
+            <input type="text" id="form-taste" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="例: 5, 美味い, 辛旨 など">
+          </div>
+
+          <div class="mt-4 flex gap-3 justify-end">
+            <button type="button" id="btn-cancel" class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 font-medium transition-colors">キャンセル</button>
+            <button type="submit" class="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-900 font-medium transition-colors">保存する</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
+
+    // --- あなた専用の Firebase Config に書き換えました！ ---
+    const firebaseConfig = {
+      apiKey: "AIzaSyDCdW8mIOizhKt2FKf4vuyOZhRXIQxdmKc",
+      authDomain: "okalogo-40bee.firebaseapp.com",
+      projectId: "okalogo-40bee",
+      storageBucket: "okalogo-40bee.firebasestorage.app",
+      messagingSenderId: "38506015761",
+      appId: "1:38506015761:web:2a2c16fab2e2ad913415b0",
+      measurementId: "G-R130SM1LN5"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // --- State ---
+    let restaurants = [];
+    let isAdmin = true;
+    let activeRestaurantId = null;
+    let selectedArea = '';
+    let selectedGenre = '';
+
+    // CSVから読み込んだ全データ（80件以上！）
+    const INITIAL_DATA = [
+      { id: '1', name: 'グリグリ　GULIGILI', genre: 'カフェ・軽食', url: 'https://retty.me/area/PRE27/ARE85/SUB60902/100001225177/', area: '池田市', address: '池田市鉢塚２-１０-１１', features: 'おしゃれ、別世界', taste: '' },
+      { id: '2', name: 'ダンケ 心斎橋 ', genre: 'カフェ・軽食', url: 'https://tabelog.com/osaka/A2701/A270201/27053278/', area: '大阪市', address: '大阪市中央区心斎橋筋1-2-22 2F', features: 'バター珈琲', taste: '4' },
+      { id: '3', name: 'オークヤード ', genre: 'カフェ・軽食', url: 'https://tabelog.com/hyogo/A2808/A280803/28037994/', area: '兵庫県朝来市', address: '兵庫県朝来市佐嚢998', features: '絶品らしい', taste: '？' },
+      { id: '4', name: 'ウッドペッカー カフェダイニング', genre: 'カフェ・軽食', url: 'https://tabelog.com/hyogo/A2803/A280301/28043809/', area: '兵庫県西宮市', address: '兵庫県西宮市中屋町9-4', features: '', taste: '' },
+      { id: '5', name: 'cafe はたち', genre: 'カフェ・軽食', url: 'https://s.tabelog.com/osaka/A2705/A270501/27062396/top_amp/', area: '大阪府堺市', address: '大阪府堺市美原区黒山480-5', features: 'サンドイッチ、卵がだし巻きの様で美味しい', taste: '' },
+      { id: '6', name: '和レー屋 南船場ゴヤクラ', genre: 'カフェ・軽食', url: 'https://tabelog.com/osaka/A2701/A270201/27015562/', area: '大阪市', address: '大阪市中央区南船場1-7-8 ダイアパレス順慶町 103', features: '辛旨カレー', taste: '4' },
+      { id: '7', name: 'インデアンカレー 南店', genre: 'カフェ・軽食', url: 'https://tabelog.com/osaka/A2701/A270202/27004448/', area: '大阪府大阪市', address: '大阪府大阪市中央区難波1-5-20', features: '美味い　結構どこにでもある', taste: '' },
+      { id: '8', name: 'アジアンバー・ラマイ 大阪あびこ店', genre: 'カフェ・軽食', url: 'https://tabelog.com/osaka/A2701/A270404/27062863/', area: '大阪府大阪市', address: '大阪府大阪市住吉区苅田7-12-5 セントラルハイツ1F', features: '美味い', taste: '' },
+      { id: '9', name: 'いずみカリー 神戸元町店', genre: 'カフェ・軽食', url: 'https://tabelog.com/hyogo/A2801/A280101/28047150/', area: '兵庫県神戸市', address: '兵庫県神戸市中央区北長狭通3-30-76', features: 'チーズが合う', taste: '' },
+      { id: '10', name: 'ジェラッテリア&カフェ　ricarica (リカリカ)', genre: 'カフェ・軽食', url: 'http://www.ricarica.jp/', area: '大阪府堺市', address: '大阪府堺市堺区向陵東町1-2-20', features: '', taste: '' },
+      { id: '11', name: 'レ・ボ・プロヴァンス', genre: 'カフェ・軽食', url: 'https://le-bo-pro.com/', area: '兵庫県西脇市', address: '兵庫県西脇市上野109-1', features: 'かき氷やばいらしい', taste: '' },
+      { id: '12', name: 'MLESNATEA OSAKA', genre: 'カフェ・軽食', url: 'https://tabelog.com/osaka/A2701/A270101/27059454/', area: '大阪府大阪市', address: '大阪府大阪市北区梅田2-5-25 ハービスプラザ B1F', features: '紅茶飲み放題', taste: '' },
+      { id: '13', name: '仙太郎　阪急うめだ本店', genre: 'カフェ・軽食', url: 'https://www.sentaro.co.jp/shop/hankyu_umeda.html', area: '大阪府大阪市', address: '大阪府大阪市北区角田町8-7　阪急うめだ本店　B1F', features: '阪急限定のおはぎがお気に入り', taste: '' },
+      { id: '14', name: 'うなぎ 串料理 いづも ルクア', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270101/27101583/', area: '大阪府大阪市', address: '大阪府大阪市北区梅田3-1-3 ルクア B2F バルチカ', features: '残った分おにぎりにして持って帰れる', taste: '？' },
+      { id: '15', name: '宝塚うなぎ処 うなへ', genre: '定食・和食系', url: 'https://tabelog.com/hyogo/A2803/A280303/28058197/', area: '兵庫県宝塚市', address: '兵庫県宝塚市平井6-8-12', features: 'お値段はするが、うなぎが溶ける', taste: '5' },
+      { id: '16', name: '東うなぎ 串本支店', genre: '定食・和食系', url: 'https://tabelog.com/wakayama/A3005/A300503/30003346/', area: '和歌山県東牟婁郡', address: '和歌山県東牟婁郡串本町串本10-12 ', features: '美味い　安い', taste: '' },
+      { id: '17', name: 'ぎゅんた', genre: '定食・和食系', url: 'https://tabelog.com/hyogo/A2803/A280304/28013573/', area: '兵庫県尼崎市', address: '兵庫県尼崎市南武庫之荘10-60-8', features: '韓国風お好み焼き、今までで一番美味いお好み焼き、量が多い', taste: '5' },
+      { id: '18', name: 'わらい　茶屋町店', genre: '定食・和食系', url: 'https://www.nishikiwarai.com/shop/shop_umeda.html', area: '大阪市', address: '大阪市北区芝田1-15-21', features: '個人的に好き、ふっくら', taste: '3' },
+      { id: '19', name: 'かみなり', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2705/A270501/27030817/', area: '大阪府堺市', address: '大阪府堺市堺区三条通7-23', features: '広島焼き、昔からの行きつけ', taste: '3' },
+      { id: '20', name: 'たこやき八潮', genre: '定食・和食系', url: 'https://maps.app.goo.gl/Y6D9iyfvSRikNFxE9?g_st=com.google.maps.preview.copy', area: '大阪府堺市', address: '大阪府堺市北区新金岡町５丁５−１０５', features: '美味い　激安', taste: '' },
+      { id: '21', name: '上善', genre: '定食・和食系', url: 'https://s.tabelog.com/osaka/A2706/A270604/27045173/top_amp/', area: '大阪府茨木市', address: '大阪府茨木市真砂1丁目12番31号 サンライフタウン古市１階', features: '某伝説の0円バイドの元祖。', taste: '4' },
+      { id: '22', name: 'かつ専門店ももやま', genre: '定食・和食系', url: 'https://tabelog.com/wakayama/A3001/A300101/30006297/', area: '和歌山市', address: '和歌山市３番町８２', features: '', taste: '4.5' },
+      { id: '23', name: 'ハイボールバー梅田楽天地 1923', genre: '定食・和食系', url: 'https://s.tabelog.com/smartphone/restaurant_detail/top?amp_floating_send_modal=1&rcd=27066349', area: '大阪府大阪市', address: '大阪府大阪市北区角田町5-1 梅田楽天地ビル 1F', features: 'カツサンドが絶品、ハイボールが美味い', taste: '3' },
+      { id: '24', name: '中央市場 ゑんどう', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270108/27002698/', area: '大阪市', address: '大阪市福島区野田1-1-86 大阪市中央卸売市場本場', features: '5貫1300円、口の中でとろける', taste: '4' },
+      { id: '25', name: 'しっとう屋', genre: '定食・和食系', url: 'http://www.shittouya.net/', area: '大阪府河内長野市', address: '大阪府河内長野市楠丘27-30', features: '寿司食べ放題', taste: '？' },
+      { id: '26', name: '花様 阪急梅田', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270101/27074425/', area: '大阪府大阪市', address: '大阪府大阪市北区芝田１-7-2かっぱ横丁2階', features: 'ランチ野菜食べ放題、自然食', taste: '4' },
+      { id: '27', name: '源兵衛 なんば店', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270202/27108460/', area: '大阪府大阪市', address: '大阪府大阪市中央区難波千日前7-15', features: 'ランチ、肉、めちゃ美味い', taste: '5' },
+      { id: '28', name: '焼鳥屋五八', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270201/27071404/', area: '大阪府大阪市', address: '大阪府大阪市中央区東心斎橋1-15-1 ふぁみーゆ東心斎橋ビル２Ｆ 2F', features: '勝手に出てくる、タバコ禁止、店主無口、隠れ家、コスパ', taste: '5' },
+      { id: '29', name: 'THE焼鳥 祝い鳥', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270201/27087964/', area: '大阪府大阪市', address: '大阪府大阪市中央区東心斎橋2-8-12 ゴールドセンタービル1Ｆ', features: '世界のつくね、卵かけごはん', taste: '4' },
+      { id: '30', name: '骨付き鶏　鶴', genre: '定食・和食系', url: 'https://www.ikkaku.co.jp/nishiumeda/menu.html', area: '大阪府大阪市', address: '大阪府大阪市北区曽根崎新地1-3-26　ぐらんぱれ4F', features: '美味しい', taste: '4' },
+      { id: '31', name: '天ぷら　たまき', genre: '定食・和食系', url: 'http://tempuratamaki.her.jp/index.html', area: '兵庫県西宮市', address: '兵庫県西宮市甲子園口2丁目3-31-1階', features: '天ぷらが美味い、漬物も絶品', taste: '5' },
+      { id: '32', name: 'おでん　十七八(となはち)', genre: '定食・和食系', url: 'https://tabelog.com/hyogo/A2805/A280501/28006383/', area: '兵庫県姫路市', address: '兵庫県姫路市呉服町46', features: 'お客様におごって貰った、あっさり、感動', taste: '4' },
+      { id: '33', name: 'ぺりーのいくら丼', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270202/27001446/', area: '大阪府大阪市', address: '大阪府大阪市中央区東心斎橋2-2-7 タワーエステイトビル 1F', features: 'いくら丼680円、うに', taste: '3' },
+      { id: '34', name: '米Lab 百福 上本町店', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270205/27120501/', area: '大阪府大阪市', address: '大阪府大阪市天王寺区石ヶ辻13-17', features: 'ランチ、定食、自然食', taste: '4' },
+      { id: '35', name: '必死のパッチ製麺所', genre: '麺類', url: 'https://tabelog.com/hyogo/A2803/A280306/28035199/', area: '大阪府大阪市', address: '大阪府大阪市中央区難波3-4-16 アーク難波ビル5F', features: 'つけめん、あごだし', taste: '4' },
+      { id: '36', name: 'だしと麺', genre: '麺類', url: 'https://tabelog.com/hyogo/A2803/A280301/28043116/', area: '兵庫県西宮市', address: '兵庫県西宮市山口町上山口2丁目7-10', features: 'つけめん、あごだし、必死のパッチ姉妹店', taste: '4' },
+      { id: '37', name: 'らーめん弥七', genre: '麺類', url: 'https://tabelog.com/osaka/A2701/A270101/27003232/', area: '大阪府大阪市', address: '大阪府大阪市北区豊崎3-4-8', features: 'つけめん美味い', taste: '4' },
+      { id: '38', name: '麺dining月乃家', genre: '麺類', url: 'https://tabelog.com/wakayama/A3002/A300202/30003817/', area: '和歌山県有田郡', address: '和歌山県有田郡有田川町大字天満428-1', features: '特濃が美味い、しらす丼も美味い', taste: '4' },
+      { id: '39', name: '鶏と魚介らぁ麺komugi', genre: '麺類', url: 'https://tabelog.com/osaka/A2701/A270305/27080892/', area: '大阪府大阪市', address: '大阪府大阪市城東区今福西3-8-26', features: '基本どれもおいしい', taste: '5' },
+      { id: '40', name: '長崎ちゃんぽん浜浪', genre: '麺類', url: 'https://tabelog.com/osaka/A2705/A270501/27011726/', area: '堺市', address: '堺市堺区出島浜通３－１', features: '安くて美味い', taste: '4.5' },
+      { id: '41', name: '九龍', genre: '麺類', url: 'https://tabelog.com/wakayama/A3001/A300101/30000968/', area: '和歌山市', address: '和歌山市田中町５－３－１８', features: '老舗　安くて美味い', taste: '4.5' },
+      { id: '42', name: 'GARB　weeks', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2701/A270102/27050613/', area: '大阪府大阪市', address: '大阪府大阪市北区中之島1-1-29 中之島公園内', features: 'おしゃれ', taste: '3' },
+      { id: '43', name: '肉匠　紋次郎　北堀江店', genre: '洋食・中華系', url: 'https://www.hotpepper.jp/strJ000507790/', area: '大阪府大阪市', address: '大阪府大阪市西区北堀江３丁目４−１５', features: '4人前400g1980円、肉の寿司、コスパ', taste: '4' },
+      { id: '44', name: '松濤園', genre: '洋食・中華系', url: 'https://g.co/kgs/dB2TUfB', area: '大阪府大阪市', address: '大阪府大阪市平野区加美北3丁目16-20', features: '韓国風、おいしい', taste: '5' },
+      { id: '45', name: '元祖 札幌や', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2704/A270401/27000244/', area: '大阪府大阪市', address: '大阪府大阪市港区市岡1-4-23', features: '餃子めちゃ美味い、ラーメンいまいち、チャーハン○', taste: '4' },
+      { id: '46', name: '無限麻辣湯', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2701/A270202/27093144/', area: '大阪府大阪市', address: '大阪府大阪市浪速区日本橋西1-1-14 第二牧ビル 1F', features: '四川的な辛さ', taste: '4' },
+      { id: '47', name: '上海', genre: '洋食・中華系', url: 'http://www.nau-now.com/shanghai/', area: '大阪府大阪市', address: '大阪府大阪市大正区千島１-１８-１２ ', features: '', taste: '5' },
+      { id: '48', name: 'キングスポート', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2707/A270703/27037869/', area: '大阪府東大阪市', address: '大阪府東大阪市新家2-1-41', features: '量がめちゃめちゃ多い、コスパ良い', taste: '3' },
+      { id: '49', name: 'やろく レストラン本店', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2701/A270404/27002854/', area: '大阪府大阪市', address: '大阪府大阪市住吉区東粉浜3-30-16', features: 'たまごコロッケ、ポテトサラダがじゃがいもの味が優しい', taste: '4' },
+      { id: '50', name: 'グラタンのお店 どつぼどーる ', genre: '洋食・中華系', url: 'https://tabelog.com/hyogo/A2803/A280303/28004183/', area: '兵庫県宝塚市', address: '兵庫県宝塚市逆瀬川1-13-27 トヨタビル 1F', features: '列車でグラタン届く、美味しい、芦屋にも店舗あり', taste: '4' },
+      { id: '51', name: 'タカムラ ワイン＆コーヒーロースターズ', genre: 'カフェ・軽食', url: 'https://takamuranet.com/', area: '大阪府大阪市', address: '大阪府大阪市西区江戸堀2丁目2-18', features: 'コーヒー豆の個性を引き出すことを最優先し、最新鋭の焙煎機を使用', taste: '' },
+      { id: '52', name: 'ENnoMADO/草樹庵', genre: 'カフェ・軽食', url: 'https://maps.app.goo.gl/CV3BMg2qsbL9bf126?g_st=com.google.maps.preview.copy', area: '大阪府枚方市', address: '大阪府枚方市茄子作北町３６−１１', features: '古民家、おしゃれ', taste: '' },
+      { id: '53', name: '讃岐うどん 白庵', genre: '麺類', url: 'https://tabelog.com/osaka/A2701/A270302/27014852/', area: '大阪府大阪市', address: '大阪府大阪市淀川区新高6-12-7 三和マンション 1F', features: '', taste: '' }
+    ];
+
+    lucide.createIcons();
+
+    // --- DOM Elements ---
+    const listEl = document.getElementById('restaurant-list');
+    const filterAreaEl = document.getElementById('filter-area');
+    const filterGenreEl = document.getElementById('filter-genre');
+    const listCountEl = document.getElementById('list-count');
+    const mapFrame = document.getElementById('map-frame');
+    const mapDetails = document.getElementById('map-details');
+    const modal = document.getElementById('form-modal');
+    const form = document.getElementById('restaurant-form');
+
+    // --- Authentication & Data Fetching ---
+    const initAuth = async () => {
+      try {
+        await signInAnonymously(auth);
+      } catch (error) {
+        console.error("Auth Error:", error);
+      }
+    };
+    initAuth();
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) return;
+      // 今回はあなた専用のFirebaseに繋ぐため、シンプルなパスに変更します
+      const collRef = collection(db, 'restaurants');
+      
+      onSnapshot(collRef, (snapshot) => {
+        if (snapshot.empty && restaurants.length === 0) {
+          // Firebaseが空っぽの場合、CSVのデータを自動で流し込みます
+          INITIAL_DATA.forEach(async (item) => {
+            await setDoc(doc(collRef, item.id), item);
+          });
+        } else {
+          restaurants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          updateFiltersOptions();
+          renderList();
+        }
+      }, (error) => {
+        console.error("Firestore Error:", error);
+      });
+    });
+
+    // --- Core Functions ---
+    function updateFiltersOptions() {
+      const areas = [...new Set(restaurants.map(r => r.area).filter(Boolean))].sort();
+      const genres = [...new Set(restaurants.map(r => r.genre).filter(Boolean))].sort();
+      
+      filterAreaEl.innerHTML = '<option value="">すべてのエリア</option>' + areas.map(a => `<option value="${a}" ${a === selectedArea ? 'selected' : ''}>${a}</option>`).join('');
+      filterGenreEl.innerHTML = '<option value="">すべてのジャンル</option>' + genres.map(g => `<option value="${g}" ${g === selectedGenre ? 'selected' : ''}>${g}</option>`).join('');
+    }
+
+    function renderList() {
+      const filtered = restaurants.filter(r => {
+        const matchArea = selectedArea ? r.area === selectedArea : true;
+        const matchGenre = selectedGenre ? r.genre === selectedGenre : true;
+        return matchArea && matchGenre;
+      });
+
+      listCountEl.textContent = filtered.length;
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `
+          <div class="text-center text-gray-400 py-10">
+            <i data-lucide="search" class="mx-auto mb-2 opacity-50 w-8 h-8"></i>
+            条件に合うお店がありません
+          </div>`;
+      } else {
+        listEl.innerHTML = filtered.map(r => {
+          const isActive = activeRestaurantId === r.id;
+          const bgClass = isActive ? 'border-orange-500 bg-orange-50/50 ring-1 ring-orange-500' : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/20';
+          
+          let actionButtons = '';
+          if (isActive) {
+            let adminOrEditorBtns = '';
+            if (isAdmin) {
+              const deleteBtnText = r.deleteRequested ? '削除を承認' : '削除';
+              adminOrEditorBtns += `<button class="btn-delete text-sm text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-md flex items-center gap-1 shadow-sm"><i data-lucide="trash-2" class="w-4 h-4"></i> ${deleteBtnText}</button>`;
+              if (r.deleteRequested) {
+                adminOrEditorBtns += `<button class="btn-cancel-request text-sm text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-md flex items-center gap-1 shadow-sm">依頼取消</button>`;
+              }
+            } else {
+              if (!r.deleteRequested) {
+                adminOrEditorBtns += `<button class="btn-request-delete text-sm text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-md flex items-center gap-1 shadow-sm"><i data-lucide="alert-circle" class="w-4 h-4"></i> 削除を依頼</button>`;
+              } else {
+                adminOrEditorBtns += `<span class="text-sm text-gray-500 px-2 py-1.5 flex items-center gap-1"><i data-lucide="check-circle" class="text-green-500 w-4 h-4"></i> 依頼済</span>`;
+              }
+            }
+
+            actionButtons = `
+              <div class="mt-4 pt-3 border-t border-orange-200/50 flex flex-wrap gap-2 justify-end">
+                <button class="btn-edit text-sm text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-md flex items-center gap-1 shadow-sm"><i data-lucide="edit-2" class="w-4 h-4"></i> 編集</button>
+                ${adminOrEditorBtns}
+              </div>
+            `;
+          }
+
+          let deleteBadge = r.deleteRequested ? `<span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-bold flex items-center gap-1 border border-red-200"><i data-lucide="alert-circle" class="w-3 h-3"></i> 削除依頼あり</span>` : '';
+
+          return `
+            <div class="restaurant-card p-4 rounded-lg border cursor-pointer transition-all ${bgClass}" data-id="${r.id}">
+              <div class="flex justify-between items-start gap-2">
+                <h3 class="font-bold text-lg text-gray-800 leading-tight">${r.name}</h3>
+                <div class="flex items-center gap-1">${deleteBadge}</div>
+              </div>
+              <div class="flex flex-wrap gap-2 mt-2">
+                ${r.genre ? `<span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-md">${r.genre}</span>` : ''}
+                ${r.area ? `<span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-md">${r.area}</span>` : ''}
+                ${r.taste ? `<span class="bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-md font-medium">評価: ${r.taste}</span>` : ''}
+              </div>
+              ${r.features ? `<p class="text-sm text-gray-600 mt-3 bg-gray-50 p-2 rounded border border-gray-100">${r.features}</p>` : ''}
+              ${actionButtons}
+            </div>
+          `;
+        }).join('');
+      }
+      lucide.createIcons();
+    }
+
+    function updateMap() {
+      const activeRestaurant = restaurants.find(r => r.id === activeRestaurantId);
+      const query = activeRestaurant ? activeRestaurant.address : (selectedArea || '大阪');
+      const zoom = activeRestaurant ? 16 : 11;
+      
+      mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=${zoom}&ie=UTF8&iwloc=&output=embed`;
+
+      if (activeRestaurant) {
+        let externalLink = activeRestaurant.url ? `<a href="${activeRestaurant.url}" target="_blank" class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center gap-1"><i data-lucide="external-link" class="w-4 h-4"></i> URLを開く</a>` : '';
+        mapDetails.innerHTML = `
+          <h4 class="font-bold text-gray-800">${activeRestaurant.name}</h4>
+          <p class="text-gray-600 text-sm">${activeRestaurant.address}</p>
+          <div class="mt-2 flex gap-3">
+            <a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activeRestaurant.address)}" target="_blank" class="text-orange-600 hover:text-orange-800 text-sm font-medium flex items-center gap-1">
+              <i data-lucide="external-link" class="w-4 h-4"></i> Google Mapで開く
+            </a>
+            ${externalLink}
+          </div>
+        `;
+      } else {
+        mapDetails.innerHTML = `<div class="text-gray-500 text-sm mt-1">${selectedArea ? selectedArea + ' の地図を表示中' : 'リストからお店を選択すると、ここに詳細な地図が表示されます。'}</div>`;
+      }
+      lucide.createIcons();
+    }
+
+    // --- Modal Logic ---
+    function openModal(data = null) {
+      document.getElementById('form-title').textContent = data ? 'お店情報の編集' : '新しいお店の追加';
+      document.getElementById('form-id').value = data?.id || '';
+      document.getElementById('form-name').value = data?.name || '';
+      document.getElementById('form-genre').value = data?.genre || '';
+      document.getElementById('form-area').value = data?.area || '';
+      document.getElementById('form-address').value = data?.address || '';
+      document.getElementById('form-url').value = data?.url || '';
+      document.getElementById('form-features').value = data?.features || '';
+      document.getElementById('form-taste').value = data?.taste || '';
+      modal.classList.remove('hidden');
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+      form.reset();
+    }
+
+    // --- Event Listeners ---
+    filterAreaEl.addEventListener('change', (e) => { selectedArea = e.target.value; activeRestaurantId = null; renderList(); updateMap(); });
+    filterGenreEl.addEventListener('change', (e) => { selectedGenre = e.target.value; activeRestaurantId = null; renderList(); updateMap(); });
+    
+    document.getElementById('btn-add').addEventListener('click', () => openModal());
+    document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+    document.getElementById('btn-cancel').addEventListener('click', closeModal);
+
+    // List Click Delegation
+    listEl.addEventListener('click', async (e) => {
+      const card = e.target.closest('.restaurant-card');
+      if (!card) return;
+      const id = card.dataset.id;
+      const restaurant = restaurants.find(r => r.id === id);
+
+      if (e.target.closest('.btn-edit')) {
+        e.stopPropagation();
+        openModal(restaurant);
+      } else if (e.target.closest('.btn-delete')) {
+        e.stopPropagation();
+        if(confirm('本当に削除しますか？')) {
+          await deleteDoc(doc(db, 'restaurants', id));
+          if(activeRestaurantId === id) { activeRestaurantId = null; updateMap(); }
+        }
+      } else if (e.target.closest('.btn-request-delete')) {
+        e.stopPropagation();
+        if(confirm('管理者に削除を依頼しますか？')) {
+          await updateDoc(doc(db, 'restaurants', id), { deleteRequested: true });
+        }
+      } else if (e.target.closest('.btn-cancel-request')) {
+        e.stopPropagation();
+        await updateDoc(doc(db, 'restaurants', id), { deleteRequested: false });
+      } else {
+        activeRestaurantId = id;
+        renderList();
+        updateMap();
+      }
+    });
+
+    // Form Submit
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('form-id').value || crypto.randomUUID();
+      const payload = {
+        id,
+        name: document.getElementById('form-name').value,
+        genre: document.getElementById('form-genre').value,
+        area: document.getElementById('form-area').value,
+        address: document.getElementById('form-address').value,
+        url: document.getElementById('form-url').value,
+        features: document.getElementById('form-features').value,
+        taste: document.getElementById('form-taste').value,
+        updatedAt: new Date().toISOString()
+      };
+      
+      await setDoc(doc(db, 'restaurants', id), payload, { merge: true });
+      closeModal();
+    });
+
+    // Admin/Editor Toggle Switches
+    const btnAdmin = document.getElementById('btn-admin');
+    const btnEditor = document.getElementById('btn-editor');
+    
+    function updateAuthUI() {
+      if (isAdmin) {
+        btnAdmin.className = "px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-orange-500 text-white shadow";
+        btnEditor.className = "px-3 py-1.5 rounded-md text-sm font-bold transition-colors text-gray-500 hover:bg-gray-200";
+      } else {
+        btnAdmin.className = "px-3 py-1.5 rounded-md text-sm font-bold transition-colors text-gray-500 hover:bg-gray-200";
+        btnEditor.className = "px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-blue-500 text-white shadow";
+      }
+      renderList();
+    }
+
+    btnAdmin.addEventListener('click', () => { isAdmin = true; updateAuthUI(); });
+    btnEditor.addEventListener('click', () => { isAdmin = false; updateAuthUI(); });
+
+  </script>
+</body>
+</html>
