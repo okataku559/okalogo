@@ -16,9 +16,13 @@
       <h1 class="text-2xl font-bold text-gray-800 tracking-tight">おかログ</h1>
     </div>
     <div class="flex items-center gap-4 bg-gray-100 p-1.5 rounded-lg border">
-      <span class="text-sm text-gray-600 font-medium px-2">現在の権限:</span>
-      <button id="btn-admin" class="px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-orange-500 text-white shadow">管理者</button>
-      <button id="btn-editor" class="px-3 py-1.5 rounded-md text-sm font-bold transition-colors text-gray-500 hover:bg-gray-200">編集者</button>
+      <span id="current-role-badge" class="text-sm font-bold px-3 py-1.5 rounded-md bg-gray-200 text-gray-600">閲覧モード</span>
+      <button id="btn-login-modal" class="px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-orange-500 text-white shadow hover:bg-orange-600">
+        編集ログイン
+      </button>
+      <button id="btn-logout" class="hidden px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-gray-500 text-white shadow hover:bg-gray-600">
+        ログアウト
+      </button>
     </div>
   </header>
 
@@ -50,7 +54,7 @@
             </select>
           </div>
         </div>
-        <div class="flex justify-end">
+        <div class="flex justify-end hidden" id="add-btn-container">
           <button id="btn-add" class="w-full sm:w-auto bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors">
             <i data-lucide="plus" class="w-5 h-5"></i> お店を追加
           </button>
@@ -90,7 +94,36 @@
     </div>
   </main>
 
-  <!-- Form Modal -->
+  <!-- Login Modal (合言葉入力画面) -->
+  <div id="login-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col">
+      <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
+        <h2 class="font-bold text-lg text-gray-800">権限の切り替え</h2>
+        <button id="btn-close-login" class="text-gray-500 hover:bg-gray-200 p-1 rounded-full transition-colors">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-6 flex flex-col gap-4">
+        <p class="text-sm text-gray-600">
+          お店の追加や編集を行うには、管理者から教えられた「合言葉」を入力してください。
+        </p>
+        <div>
+          <input type="password" id="password-input" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="合言葉を入力">
+          <p id="login-error" class="text-red-500 text-xs mt-1 hidden">合言葉が間違っています。</p>
+        </div>
+        <button id="btn-submit-login" class="w-full bg-orange-500 text-white font-bold py-2 rounded-md hover:bg-orange-600 transition-colors">
+          ログイン
+        </button>
+        <hr class="my-2 border-gray-200">
+        <!-- ▼ 管理者のメールアドレスに変更してください ▼ -->
+        <a href="mailto:your-email@example.com?subject=【おかログ】編集権限の申請&body=おかログにお店を追加したいです。%0D%0A編集用の合言葉を教えてください！" class="text-center text-sm text-blue-600 hover:underline flex items-center justify-center gap-1">
+          <i data-lucide="mail" class="w-4 h-4"></i> 管理者に合言葉をリクエストする
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Modal (お店追加・編集画面) -->
   <div id="form-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
       <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
@@ -154,7 +187,7 @@
     import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
 
-    // --- あなた専用の Firebase Config に書き換えました！ ---
+    // --- あなた専用の Firebase Config ---
     const firebaseConfig = {
       apiKey: "AIzaSyDCdW8mIOizhKt2FKf4vuyOZhRXIQxdmKc",
       authDomain: "okalogo-40bee.firebaseapp.com",
@@ -170,164 +203,20 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
+    // --- 権限管理 (パスワード設定) ---
+    // ここでお好きな合言葉に変更できます！
+    const ADMIN_PASSWORD = "admin"; // 管理者用合言葉（削除ができる）
+    const EDITOR_PASSWORD = "edit"; // 編集者用合言葉（追加・編集・削除依頼ができる）
+    
+    // 現在の権限ステータス ('viewer', 'editor', 'admin')
+    let currentRole = localStorage.getItem('okalogo_role') || 'viewer';
+
     // --- State ---
     let restaurants = [];
-    let isAdmin = true;
     let activeRestaurantId = null;
     let selectedPref = '';
     let selectedArea = '';
     let selectedGenre = '';
-
-    // CSVから読み込んだ全データ（約150件！）
-    const INITIAL_DATA = [
-      { id: '1', name: 'グリグリ　GULIGILI', genre: 'カフェ・軽食', url: 'https://retty.me/area/PRE27/ARE85/SUB60902/100001225177/', area: '池田市', address: '池田市鉢塚２-１０-１１', features: 'おしゃれ、別世界', taste: '' },
-      { id: '2', name: 'ダンケ 心斎橋 ', genre: 'カフェ・軽食', url: 'https://tabelog.com/osaka/A2701/A270201/27053278/', area: '大阪市', address: '大阪市中央区心斎橋筋1-2-22 2F', features: 'バター珈琲', taste: '4' },
-      { id: '3', name: 'オークヤード ', genre: 'カフェ・軽食', url: 'https://tabelog.com/hyogo/A2808/A280803/28037994/', area: '兵庫県朝来市', address: '兵庫県朝来市佐嚢998', features: '絶品らしい', taste: '？' },
-      { id: '4', name: 'ウッドペッカー カフェダイニング', genre: 'カフェ・軽食', url: 'https://tabelog.com/hyogo/A2803/A280301/28043809/', area: '兵庫県西宮市', address: '兵庫県西宮市中屋町9-4', features: '', taste: '' },
-      { id: '5', name: 'cafe はたち', genre: 'カフェ・軽食', url: 'https://s.tabelog.com/osaka/A2705/A270501/27062396/top_amp/', area: '大阪府堺市', address: '大阪府堺市美原区黒山480-5', features: 'サンドイッチ、卵がだし巻きの様で美味しい', taste: '' },
-      { id: '6', name: '和レー屋 南船場ゴヤクラ', genre: 'カフェ・軽食', url: 'https://tabelog.com/osaka/A2701/A270201/27015562/', area: '大阪市', address: '大阪市中央区南船場1-7-8 ダイアパレス順慶町 103', features: '辛旨カレー', taste: '4' },
-      { id: '7', name: 'インデアンカレー 南店', genre: 'カフェ・軽食', url: 'https://tabelog.com/osaka/A2701/A270202/27004448/', area: '大阪府大阪市', address: '大阪府大阪市中央区難波1-5-20', features: '美味い　結構どこにでもある', taste: '' },
-      { id: '8', name: 'アジアンバー・ラマイ 大阪あびこ店', genre: 'カフェ・軽食', url: 'https://tabelog.com/osaka/A2701/A270404/27062863/', area: '大阪府大阪市', address: '大阪府大阪市住吉区苅田7-12-5 セントラルハイツ1F', features: '美味い', taste: '' },
-      { id: '9', name: 'いずみカリー 神戸元町店', genre: 'カフェ・軽食', url: 'https://tabelog.com/hyogo/A2801/A280101/28047150/', area: '兵庫県神戸市', address: '兵庫県神戸市中央区北長狭通3-30-76', features: 'チーズが合う', taste: '' },
-      { id: '10', name: 'スパイス食堂 ニッキ', genre: 'カフェ・軽食', url: 'https://tabelog.com/osaka/A2701/A270106/27093085/', area: '大阪府大阪市', address: '大阪府大阪市西区立売堀1-8-6 星和シティビル本町西 101', features: '', taste: '' },
-      { id: '11', name: 'SPICE STAND TONGARI', genre: 'カフェ・軽食', url: 'https://tabelog.com/osaka/A2701/A270201/27146697/', area: '大阪府大阪市', address: '大阪府大阪市西区新町1-14-2', features: '', taste: '' },
-      { id: '12', name: 'ジェラッテリア&カフェ　ricarica', genre: 'カフェ・軽食', url: 'http://www.ricarica.jp/', area: '大阪府堺市', address: '大阪府堺市堺区向陵東町1-2-20', features: '', taste: '' },
-      { id: '13', name: 'レ・ボ・プロヴァンス', genre: 'カフェ・軽食', url: 'https://le-bo-pro.com/', area: '兵庫県西脇市', address: '兵庫県西脇市上野109-1', features: 'かき氷やばいらしい', taste: '' },
-      { id: '14', name: '観音山フルーツガーデン', genre: 'カフェ・軽食', url: 'https://www.kannonyama.com/', area: '和歌山県紀の川市', address: '和歌山県紀の川市粉河3186-126', features: '', taste: '' },
-      { id: '15', name: '道の駅 四季の郷公園', genre: 'カフェ・軽食', url: 'https://fh-park.jp/place/hi/', area: '和歌山県和歌山市', address: '和歌山県和歌山市明王寺479-1', features: '自然の恵みを堪能できる', taste: '' },
-      { id: '16', name: 'MLESNATEA OSAKA', genre: 'カフェ・軽食', url: 'https://tabelog.com/osaka/A2701/A270101/27059454/', area: '大阪府大阪市', address: '大阪府大阪市北区梅田2-5-25 ハービスプラザ B1F', features: '紅茶飲み放題', taste: '' },
-      { id: '17', name: 'カフェ＆クレープリーとびだす焙煎所', genre: 'カフェ・軽食', url: 'https://tobidasu-cafe.com/', area: '和歌山県和歌山市', address: '和歌山県和歌山市黒田22-1', features: '', taste: '' },
-      { id: '18', name: '仙太郎　阪急うめだ本店', genre: 'カフェ・軽食', url: 'https://www.sentaro.co.jp/shop/hankyu_umeda.html', area: '大阪府大阪市', address: '大阪府大阪市北区角田町8-7　阪急うめだ本店　B1F', features: '阪急限定のおはぎがお気に入り', taste: '' },
-      { id: '19', name: 'うなぎ 串料理 いづも ルクア', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270101/27101583/', area: '大阪府大阪市', address: '大阪府大阪市北区梅田3-1-3 ルクア B2F バルチカ', features: '美味しいらしい、残った分おにぎりにして持って帰れるらしい', taste: '？' },
-      { id: '20', name: '宝塚うなぎ処 うなへ', genre: '定食・和食系', url: 'https://tabelog.com/hyogo/A2803/A280303/28058197/', area: '兵庫県宝塚市', address: '兵庫県宝塚市平井6-8-12', features: 'お値段はするが、うなぎが溶ける', taste: '5' },
-      { id: '21', name: '東うなぎ 串本支店', genre: '定食・和食系', url: 'https://tabelog.com/wakayama/A3005/A300503/30003346/', area: '和歌山県東牟婁郡', address: '和歌山県東牟婁郡串本町串本10-12 ', features: '美味い　安い', taste: '' },
-      { id: '22', name: 'ぎゅんた', genre: '定食・和食系', url: 'https://tabelog.com/hyogo/A2803/A280304/28013573/', area: '兵庫県尼崎市', address: '兵庫県尼崎市南武庫之荘10-60-8', features: '韓国風お好み焼き、今までで一番美味いお好み焼き、量が多い', taste: '5' },
-      { id: '23', name: 'わらい　茶屋町店', genre: '定食・和食系', url: 'https://www.nishikiwarai.com/shop/shop_umeda.html', area: '大阪市', address: '大阪市北区芝田1-15-21', features: '個人的に好き、ふっくら', taste: '3' },
-      { id: '24', name: '錦わらい 宝塚店', genre: '定食・和食系', url: 'https://www.nishikiwarai.com/shop/shop_takarazuka.html', area: '兵庫県宝塚市', address: '兵庫県宝塚市中筋7-13-2', features: '', taste: '' },
-      { id: '25', name: '錦わらい 泉北店', genre: '定食・和食系', url: 'https://www.nishikiwarai.com/shop/shop_senboku.html', area: '大阪府堺市', address: '大阪府堺市南区大庭寺813-1', features: '', taste: '' },
-      { id: '26', name: '錦わらい 堺福田店', genre: '定食・和食系', url: 'https://www.nishikiwarai.com/shop/shop_sakaifukuda.html', area: '大阪府堺市', address: '大阪府堺市中区陶器北1696－3', features: '', taste: '' },
-      { id: '27', name: 'かみなり', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2705/A270501/27030817/', area: '大阪府堺市', address: '大阪府堺市堺区三条通7-23', features: '広島焼き、宮路さんの昔からの行きつけ', taste: '3' },
-      { id: '28', name: 'たこやき八潮', genre: '定食・和食系', url: 'https://maps.app.goo.gl/Y6D9iyfvSRikNFxE9', area: '大阪府堺市', address: '大阪府堺市北区新金岡町５丁５−１０５', features: '美味い　激安', taste: '' },
-      { id: '29', name: '上善', genre: '定食・和食系', url: 'https://s.tabelog.com/osaka/A2706/A270604/27045173/top_amp/', area: '大阪府茨木市', address: '大阪府茨木市真砂1丁目12番31号 サンライフタウン古市１階', features: '某伝説の0円バイドの元祖。', taste: '4' },
-      { id: '30', name: 'かつ専門店ももやま', genre: '定食・和食系', url: 'https://tabelog.com/wakayama/A3001/A300101/30006297/', area: '和歌山市', address: '和歌山市３番町８２', features: '', taste: '4.5' },
-      { id: '31', name: 'とん亭', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270203/27011174/', area: '大阪府大阪市', address: '大阪府大阪市天王寺区大道4-1-2', features: '美味い', taste: '' },
-      { id: '32', name: 'とんかつこおち', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270205/27036685/', area: '大阪府大阪市', address: '大阪府大阪市天王寺区上本町6-3-31 うえほんまちハイハイタウン 2F', features: '美味い', taste: '' },
-      { id: '33', name: '味一', genre: '定食・和食系', url: 'https://tabelog.com/wakayama/A3001/A300101/30000448/', area: '和歌山県和歌山市', address: '和歌山県和歌山市杉ノ馬場２丁目３１', features: '美味い　安い', taste: '' },
-      { id: '34', name: 'ハイボールバー梅田楽天地 1923', genre: '定食・和食系', url: 'https://s.tabelog.com/smartphone/restaurant_detail/top?amp_floating_send_modal=1&rcd=27066349', area: '大阪府大阪市', address: '大阪府大阪市北区角田町5-1 梅田楽天地ビル 1F', features: 'カツサンドが絶品、ハイボールが美味い', taste: '3' },
-      { id: '35', name: 'adee', genre: '定食・和食系', url: 'https://icosaka.com/restaurant/adee/', area: '大阪府大阪市', address: '大阪府大阪市北区大深町3-60 インターコンチネンタルホテル大阪 20F', features: '', taste: '' },
-      { id: '36', name: 'いちゃりば', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270401/27002656/', area: '大阪府大阪市', address: '大阪府大阪市大正区三軒家東1-9-12', features: '美味しいらしい', taste: '-' },
-      { id: '37', name: 'やまと', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2707/A270705/27016167/', area: '大阪府八尾市', address: '大阪府八尾市久宝寺１丁目２−５', features: '美味い', taste: '' },
-      { id: '38', name: '中央市場 ゑんどう', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270108/27002698/', area: '大阪市', address: '大阪市福島区野田1-1-86 大阪市中央卸売市場本場', features: '5貫1300円、口の中でとろける', taste: '4' },
-      { id: '39', name: 'しっとう屋', genre: '定食・和食系', url: 'http://www.shittouya.net/', area: '大阪府河内長野市', address: '大阪府河内長野市楠丘27-30', features: '寿司食べ放題', taste: '？' },
-      { id: '40', name: '鮨処 音羽 京都祇園店', genre: '定食・和食系', url: 'https://tabelog.com/kyoto/A2601/A260301/26003604/', area: '京都府京都市', address: '京都府京都市東山区四条大和大路通り四条上常磐町151', features: '美味い', taste: '' },
-      { id: '41', name: '回転すし さかえ 阪急東通り店', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270101/27002305/', area: '大阪府大阪市', address: '大阪府大阪市北区堂山町3-12 玄風ビル　１Ｆ', features: '安い、美味い', taste: '' },
-      { id: '42', name: '個室 均一居酒屋 イチかバチか なんば店 ', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270202/27097093/', area: '兵庫県伊丹市', address: '兵庫県伊丹市北本町2-190', features: 'とにかく安い、飲み会用', taste: '3' },
-      { id: '43', name: '花様 阪急梅田', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270101/27074425/', area: '大阪府大阪市', address: '大阪府大阪市北区芝田１-7-2かっぱ横丁2階', features: 'ランチ野菜食べ放題、自然食', taste: '4' },
-      { id: '44', name: '花様 西梅田', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270101/27076244/', area: '大阪府大阪市', address: '大阪府大阪市北区堂島2-1-18 堂島NSビル 1F', features: '', taste: '' },
-      { id: '45', name: '花様 ka‐you 天王寺ミオ', genre: '定食・和食系', url: 'https://k447411.gorp.jp/', area: '大阪府大阪市', address: '大阪府大阪市天王寺区悲田院町10-39 天王寺MIO11F', features: '', taste: '' },
-      { id: '46', name: '花様 ka‐you 京橋京阪モール', genre: '定食・和食系', url: 'https://r.gnavi.co.jp/g5mzmaam0000/', area: '大阪府大阪市', address: '大阪府大阪市都島区東野田町2-1-38 京阪モールホテル館6F', features: '', taste: '' },
-      { id: '47', name: 'はなまる串カツ製作所 大宮店', genre: '定食・和食系', url: 'https://tabelog.com/kyoto/A2601/A260203/26018240/', area: '京都府京都市', address: '京都府京都市中京区壬生坊城町3-3', features: '', taste: '4' },
-      { id: '48', name: '源兵衛 なんば店', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270202/27108460/', area: '大阪府大阪市', address: '大阪府大阪市中央区難波千日前7-15', features: 'ランチ、肉、めちゃ美味い', taste: '5' },
-      { id: '49', name: '源兵衛 天王寺あべの店', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270203/27102430/', area: '大阪府大阪市', address: '大阪府大阪市阿倍野区阿倍野筋2-4-45', features: 'ランチ、肉、めちゃ美味い', taste: '5' },
-      { id: '50', name: '源兵衛 天満本店', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270103/27073028/', area: '大阪府大阪市', address: '大阪府大阪市北区同心2-13-6', features: 'ランチ、肉、めちゃ美味い', taste: '5' },
-      { id: '51', name: '一本槍', genre: '定食・和食系', url: 'https://tabelog.com/kyoto/A2601/A260601/26003928/', area: '京都府京都市', address: '京都府京都市伏見区深草西浦町7-76', features: '美味い', taste: '' },
-      { id: '52', name: '喰ま呑み', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2705/A270501/27089691/', area: '大阪府堺市', address: '大阪府堺市堺区甲斐町東1-1-18', features: '美味い', taste: '' },
-      { id: '53', name: '味穂', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270202/27003566/', area: '大阪府大阪市', address: '大阪府大阪市中央区西心斎橋2-8-33 センタービル　１Ｆ', features: '美味い、梯子酒に良い', taste: '' },
-      { id: '54', name: '焼鳥屋五八', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270201/27071404/', area: '大阪府大阪市', address: '大阪府大阪市中央区東心斎橋1-15-1 ふぁみーゆ東心斎橋ビル２Ｆ 2F', features: '勝手に出てくる、タバコ禁止、コスパ', taste: '5' },
-      { id: '55', name: 'むかいの 五八', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270201/27120613/', area: '大阪府大阪市', address: '大阪府大阪市中央区東心斎橋1-6-23 清水町会館 3F', features: '上の五八の姉妹店、こっちの方が行きやすい', taste: '' },
-      { id: '56', name: 'THE焼鳥 祝い鳥', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270201/27087964/', area: '大阪府大阪市', address: '大阪府大阪市中央区東心斎橋2-8-12 ゴールドセンタービル1Ｆ', features: '世界のつくね、卵かけごはん', taste: '4' },
-      { id: '57', name: '一十', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270108/27085273/', area: '大阪府大阪市', address: '大阪府大阪市福島区福島8-17-5', features: 'おしゃれ、カウンター', taste: '4' },
-      { id: '58', name: '骨付き鶏　鶴', genre: '定食・和食系', url: 'https://www.ikkaku.co.jp/nishiumeda/menu.html', area: '大阪府大阪市', address: '大阪府大阪市北区曽根崎新地1-3-26　ぐらんぱれ4F', features: '美味しい', taste: '4' },
-      { id: '59', name: '鳥玖', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270202/27098078/', area: '大阪府大阪市', address: '大阪府大阪市浪速区元町１丁目２−２２ 明星荘 1階', features: '安くて美味い', taste: '' },
-      { id: '60', name: '凡僧', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270307/27012974/', area: '大阪府大阪市', address: '大阪府大阪市東淀川区小松１丁目１−２', features: '美味い　ソリレスおすすめ', taste: '' },
-      { id: '61', name: '一本松', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270108/27001179/', area: '大阪府大阪市', address: '大阪府大阪市福島区福島5-14-10', features: '美味い', taste: '' },
-      { id: '62', name: '鳥一', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270202/27022238/', area: '大阪府大阪市', address: '大阪府大阪市中央区東心斎橋2-3-21 大阪屋玉屋町会館 1Ｆ', features: '美味い', taste: '' },
-      { id: '63', name: '中央軒 本店', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270202/27002577/', area: '大阪府大阪市', address: '大阪府大阪市中央区難波4-2-11', features: '美味い　結構どこにでもある', taste: '' },
-      { id: '64', name: '鳥せい', genre: '定食・和食系', url: 'https://tabelog.com/kyoto/A2601/A260601/26001213/', area: '京都府京都市', address: '京都府京都市伏見区上油掛町186', features: '美味い、横で水が汲める', taste: '' },
-      { id: '65', name: 'とりやき大福', genre: '定食・和食系', url: 'https://toriyaki-daifuku.com/', area: '大阪府堺市', address: '大阪府堺市北区金岡町１４１９−１０', features: '美味い', taste: '' },
-      { id: '66', name: '銀ちゃん', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270405/27018771/', area: '大阪府大阪市', address: '大阪府大阪市平野区背戸口１丁目２２−２８', features: '美味い、愛想はそんなよくない', taste: '' },
-      { id: '67', name: '焼鳥 金ちゃん 長居店', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270404/27126366/', area: '大阪府大阪市', address: '大阪府大阪市住吉区長居西1-11-38 ', features: '美味い', taste: '' },
-      { id: '68', name: 'イルカ', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2705/A270503/27030720/', area: '大阪府泉佐野市', address: '大阪府泉佐野市新町2-5187-101', features: '漁港、ランチ1000円', taste: '4' },
-      { id: '69', name: '天ぷら　たまき', genre: '定食・和食系', url: 'http://tempuratamaki.her.jp/index.html', area: '兵庫県西宮市', address: '兵庫県西宮市甲子園口2丁目3-31-1階', features: '天ぷらが美味い、漬物も絶品', taste: '5' },
-      { id: '70', name: '相撲茶屋寺尾', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270101/27044891/', area: '大阪府大阪市', address: '大阪府大阪市北区梅田2-4-6 １Ｆ', features: '美味い', taste: '' },
-      { id: '71', name: '餃子鍋　A-chan　北新地', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270101/27049155/', area: '大阪府大阪市', address: '大阪府大阪市北区曽根崎新地1-2-1 ２F', features: '餃子鍋の人気店', taste: '4' },
-      { id: '72', name: '鳥名子 福知山本店', genre: '定食・和食系', url: 'torinago.com', area: '京都府福知山市', address: '京都府福知山市中ノ２３３−１１', features: '美味い', taste: '' },
-      { id: '73', name: '丹波篠山 猪料理専門店　奥栄', genre: '定食・和食系', url: 'https://www.okuei.com/', area: '兵庫県丹波篠山市', address: '兵庫県丹波篠山市藤岡奥492-5', features: '美味い　雰囲気良い', taste: '' },
-      { id: '74', name: 'てっちゃん鍋 やすもり 尼崎本店', genre: '定食・和食系', url: 'https://tabelog.com/hyogo/A2803/A280304/28001200/', area: '兵庫県尼崎市', address: '兵庫県尼崎市神田中通3-85', features: '美味い　安い', taste: '' },
-      { id: '75', name: '海老蔵', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2707/A270703/27008440/', area: '大阪府東大阪市', address: '大阪府東大阪市寿町3-19-2', features: '美味い　豪華', taste: '' },
-      { id: '76', name: 'おでん　十七八(となはち)', genre: '定食・和食系', url: 'https://tabelog.com/hyogo/A2805/A280501/28006383/', area: '兵庫県姫路市', address: '兵庫県姫路市呉服町46', features: 'お客様におごって貰った、あっさり、感動', taste: '4' },
-      { id: '77', name: 'かすや　北新地店', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270101/27100904/', area: '大阪府大阪市', address: '大阪府大阪市北区曾根崎新地1-7-6 新日本新地ビル東館 1F', features: 'お客様の店', taste: '-' },
-      { id: '78', name: 'ぺりーのいくら丼', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270202/27001446/', area: '大阪府大阪市', address: '大阪府大阪市中央区東心斎橋2-2-7 タワーエステイトビル 1F', features: 'いくら丼680円、うに', taste: '3' },
-      { id: '79', name: '米Lab 百福 上本町店', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270205/27120501/', area: '大阪府大阪市', address: '大阪府大阪市天王寺区石ヶ辻13-17', features: 'ランチ、定食、自然食', taste: '4' },
-      { id: '80', name: '串カツ いぬい', genre: '定食・和食系', url: 'https://tabelog.com/osaka/A2701/A270405/27015677/', area: '大阪府大阪市', address: '大阪府大阪市平野区平野本町2-4-15', features: '', taste: '' },
-      { id: '81', name: 'モッさんのべた焼 大宮店', genre: '定食・和食系', url: 'https://tabelog.com/kyoto/A2601/A260203/26036140/', area: '京都府京都市', address: '京都府京都市中京区大宮通り四条上ル錦大宮町141', features: '', taste: '' },
-      { id: '82', name: '吾妻', genre: '麺類', url: 'https://tabelog.com/osaka/A2706/A270603/27005032/', area: '大阪府池田市', address: '大阪府池田市西本町6-17', features: '老舗、やさしい', taste: '' },
-      { id: '83', name: '一久', genre: '麺類', url: 'https://tabelog.com/osaka/A2706/A270601/27011483/', area: '大阪府豊中市', address: '大阪府豊中市熊野町4-20-31 第２ユーロハイツ', features: '美味い', taste: '' },
-      { id: '84', name: '辨慶うどん 西京極本店', genre: '麺類', url: 'https://tabelog.com/kyoto/A2601/A260401/26001455/', area: '京都市', address: '京都市右京区西京極東大丸町１６ リーブル篠原', features: '美味い　甘辛', taste: '' },
-      { id: '85', name: '手打ちうどん やまびこ 伏見店', genre: '麺類', url: 'https://tabelog.com/kyoto/A2601/A260601/26005986/', area: '京都府京都市', address: '京都府京都市伏見区肥後町375', features: '美味い', taste: '' },
-      { id: '86', name: 'つけ鴨うどん　鴨錦', genre: '麺類', url: 'https://kamokin.jp/', area: '大阪府大阪市', address: '大阪府大阪市浪速区恵美須東2-9-8 フレンドリー浪速1階', features: '美味い　結構どこにでもある', taste: '' },
-      { id: '87', name: '讃岐うどん 白庵', genre: '麺類', url: 'https://tabelog.com/osaka/A2701/A270302/27014852/', area: '大阪府大阪市', address: '大阪府大阪市淀川区新高6-12-7 三和マンション 1F', features: '', taste: '' },
-      { id: '88', name: '踊るうどん 滝井本店', genre: '麺類', url: 'https://s.tabelog.com/osaka/A2707/A270701/27004023/', area: '大阪府守口市', address: '大阪府守口市紅屋町6-7', features: 'まいたけの天ぷらが美味', taste: '' },
-      { id: '89', name: 'すじかま', genre: '麺類', url: 'https://tabelog.com/hyogo/A2803/A280301/28002185/', area: '兵庫県西宮市', address: '兵庫県西宮市山口町船坂北山コイツカ2178-23', features: '', taste: '' },
-      { id: '90', name: '必死のパッチ製麺所', genre: '麺類', url: 'https://tabelog.com/hyogo/A2803/A280306/28035199/', area: '大阪府大阪市', address: '大阪府大阪市中央区難波3-4-16 アーク難波ビル5F', features: 'つけめん、あごだし', taste: '4' },
-      { id: '91', name: 'だしと麺', genre: '麺類', url: 'https://tabelog.com/hyogo/A2803/A280301/28043116/', area: '兵庫県西宮市', address: '兵庫県西宮市山口町上山口2丁目7-10', features: 'つけめん、あごだし、必死のパッチ姉妹店', taste: '4' },
-      { id: '92', name: '島田製麺食堂', genre: '麺類', url: 'https://tabelog.com/osaka/A2706/A270601/27054203/', area: '大阪府豊中市', address: '大阪府豊中市宝山町23-11', features: 'つけめん、あごだし、必死のパッチ姉妹店', taste: '4' },
-      { id: '93', name: '荒波屋', genre: '麺類', url: 'https://tabelog.com/hyogo/A2807/A280703/28054010/', area: '兵庫県三田市', address: '兵庫県三田市駅前町4-27', features: 'つけめん、あごだし、必死のパッチ姉妹店、2店舗ある', taste: '4' },
-      { id: '94', name: '吉岡マグロ節センター', genre: '麺類', url: 'https://tabelog.com/osaka/A2706/A270601/27096948/', area: '大阪府豊中市', address: '大阪府豊中市蛍池東町2-3-24', features: 'つけめん、あごだし、必死のパッチ姉妹店', taste: '4' },
-      { id: '95', name: 'らーめん弥七', genre: '麺類', url: 'https://tabelog.com/osaka/A2701/A270101/27003232/', area: '大阪府大阪市', address: '大阪府大阪市北区豊崎3-4-8', features: 'つけめん美味い', taste: '4' },
-      { id: '96', name: '麺dining月乃家', genre: '麺類', url: 'https://tabelog.com/wakayama/A3002/A300202/30003817/', area: '和歌山県有田郡', address: '和歌山県有田郡有田川町大字天満428-1', features: '特濃が美味い、しらす丼も美味い', taste: '4' },
-      { id: '97', name: '大黒ラーメン 本店', genre: '麺類', url: 'https://tabelog.com/kyoto/A2601/A260601/26003217/', area: '京都府京都市', address: '京都府京都市伏見区京町大黒町118 ', features: '安い　おやつにも', taste: '' },
-      { id: '98', name: '紫川ラーメン', genre: '麺類', url: 'https://tabelog.com/hyogo/A2804/A280403/28011421/', area: '兵庫県加東市', address: '兵庫県加東市下滝野１丁目１０５−１', features: '美味い、甘め', taste: '' },
-      { id: '99', name: '鶏 soba 座銀 本店', genre: '麺類', url: 'https://tabelog.com/osaka/A2701/A270102/27079112/', area: '大阪府大阪市', address: '大阪府大阪市西区江戸堀1-19-2', features: '美味い', taste: '' },
-      { id: '100', name: '鶏と魚介らぁ麺komugi', genre: '麺類', url: 'https://tabelog.com/osaka/A2701/A270305/27080892/', area: '大阪府大阪市', address: '大阪府大阪市城東区今福西3-8-26', features: '基本どれもおいしい', taste: '5' },
-      { id: '101', name: '長崎ちゃんぽん浜浪', genre: '麺類', url: 'https://tabelog.com/osaka/A2705/A270501/27011726/', area: '堺市', address: '堺市堺区出島浜通３－１', features: '安くて美味い', taste: '4.5' },
-      { id: '102', name: '九龍', genre: '麺類', url: 'https://tabelog.com/wakayama/A3001/A300101/30000968/', area: '和歌山市', address: '和歌山市田中町５－３－１８', features: '老舗　安くて美味い', taste: '4.5' },
-      { id: '103', name: '天遊', genre: '麺類', url: 'https://tabelog.com/hyogo/A2803/A280304/28003441/', area: '兵庫県尼崎市', address: '兵庫県尼崎市東難波町5-8-19 ', features: '美味い', taste: '' },
-      { id: '104', name: 'しま彰', genre: '麺類', url: 'https://tabelog.com/wakayama/A3001/A300102/30005976/', area: '和歌山県紀の川市', address: '和歌山県紀の川市貴志川町長原102 ジョイフルサンマリノ', features: '美味い', taste: '' },
-      { id: '105', name: 'どんたく', genre: '麺類', url: 'https://tabelog.com/kyoto/A2607/A260701/26010903/', area: '京都府宇治市', address: '京都府宇治市宇文字15', features: '美味い　安い', taste: '' },
-      { id: '106', name: '正善', genre: '麺類', url: 'https://tabelog.com/wakayama/A3001/A300101/30009037/', area: '和歌山県和歌山市', address: '和歌山県和歌山市直川591-1', features: '美味い', taste: '' },
-      { id: '107', name: '夜鳴きや', genre: '麺類', url: 'https://tabelog.com/kyoto/A2601/A260603/26001039/', area: '京都府京都市', address: '京都府京都市山科区大塚南溝町36', features: '美味い', taste: '' },
-      { id: '108', name: '特製ラーメン 大中 本店', genre: '麺類', url: 'https://tabelog.com/kyoto/A2601/A260601/26000035/', area: '京都府京都市', address: '京都府京都市伏見区観音寺町高架下217', features: '美味い', taste: '' },
-      { id: '109', name: '小洞天', genre: '麺類', url: 'https://tabelog.com/osaka/A2701/A270202/27001197/', area: '大阪府大阪市', address: '大阪府大阪市中央区千日前1-6-10 千寿ビル　１Ｆ', features: '美味い　あっさり　〆', taste: '' },
-      { id: '110', name: 'らーめん門扇 伏水酒蔵店', genre: '麺類', url: 'https://tabelog.com/kyoto/A2601/A260601/26026963/', area: '京都市', address: '京都市伏見区平野町８２−２ 伏水酒蔵小路内', features: '美味い', taste: '' },
-      { id: '111', name: 'ほそかわ 城陽店', genre: '麺類', url: 'https://tabelog.com/kyoto/A2607/A260704/26005746/', area: '京都府城陽市', address: '京都府城陽市寺田高田44-7', features: '美味い', taste: '' },
-      { id: '112', name: '豚骨ラー麺 ごん太', genre: '麺類', url: 'https://tabelog.com/osaka/A2708/A270801/27003719/', area: '大阪府羽曳野市', address: '大阪府羽曳野市西浦1-2-17', features: '美味い', taste: '' },
-      { id: '113', name: '中華そば ふじい 芦原橋本店', genre: '麺類', url: 'https://tabelog.com/osaka/A2701/A270206/27058258/', area: '大阪府大阪市', address: '大阪府大阪市浪速区塩草3-9-19 ', features: '美味い', taste: '' },
-      { id: '114', name: 'GARB　weeks', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2701/A270102/27050613/', area: '大阪府大阪市', address: '大阪府大阪市北区中之島1-1-29 中之島公園内', features: 'おしゃれ', taste: '3' },
-      { id: '115', name: 'CUORERUDINO', genre: '洋食・中華系', url: 'https://cuorerudino.com/', area: '大阪府大阪市', address: '大阪府大阪市西区南堀江1-14-26', features: '窯焼きのピザ', taste: '' },
-      { id: '116', name: '万宝家', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2701/A270306/27014750/', area: '大阪府大阪市', address: '大阪府大阪市生野区新今里3丁目11-20', features: '美味い', taste: '' },
-      { id: '117', name: '台湾料理 味仙 大阪駅前第2ビル店', genre: '洋食・中華系', url: 'https://yabamisen.jp', area: '大阪府大阪市', address: '大阪府大阪市北区梅田１丁目２−２ 大阪駅前第2ビル B1', features: '美味い　辛い', taste: '' },
-      { id: '118', name: 'ホルモン 成田屋', genre: '洋食・中華系', url: 'https://tabelog.com/wakayama/A3001/A300101/30000660/', area: '和歌山県和歌山市', address: '和歌山県和歌山市中之島2012', features: '美味い、愛想は良くないクセ強め', taste: '' },
-      { id: '119', name: '肉匠　紋次郎　北堀江店', genre: '洋食・中華系', url: 'https://www.hotpepper.jp/strJ000507790/', area: '大阪府大阪市', address: '大阪府大阪市西区北堀江３丁目４−１５', features: '4人前400g1980円、肉の寿司', taste: '4' },
-      { id: '120', name: '焼肉　肉匠　紋次郎　東三国店', genre: '洋食・中華系', url: 'https://www.hotpepper.jp/strJ000661309/', area: '大阪府大阪市', address: '大阪府大阪市淀川区東三国４-14-22', features: '', taste: '' },
-      { id: '121', name: '肉匠　紋次郎　森之宮店', genre: '洋食・中華系', url: 'https://www.monjirou.org/index3.html', area: '大阪府大阪市', address: '大阪府大阪市東成区中道２丁目２１-１９', features: '', taste: '' },
-      { id: '122', name: '肉匠　紋次郎　大正店', genre: '洋食・中華系', url: 'https://www.monjirou.org/index1.html', area: '大阪府大阪市', address: '大阪府大阪市大正区泉尾２丁目９-１０', features: '', taste: '' },
-      { id: '123', name: 'グルメリア但馬 市島店 ', genre: '洋食・中華系', url: 'https://tabelog.com/hyogo/A2807/A280701/28003171/', area: '兵庫県丹波市', address: '兵庫県丹波市市島町上田46', features: '肉、ちょい高いけど美味しいらしい', taste: '？' },
-      { id: '124', name: '五光', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2707/A270704/27034192/', area: '大阪府大東市', address: '大阪府大東市三住町1-35', features: 'はらみ、塩タン、角モモステーキ、卵かけご飯', taste: '？' },
-      { id: '125', name: '松濤園', genre: '洋食・中華系', url: 'https://g.co/kgs/dB2TUfB', area: '大阪府大阪市', address: '大阪府大阪市平野区加美北3丁目16-20', features: '韓国風、おいしい', taste: '5' },
-      { id: '126', name: '江畑', genre: '洋食・中華系', url: 'https://tabelog.com/kyoto/A2601/A260501/26001035/', area: '京都府京都市', address: '京都府京都市上京区六軒町通下ル長者町東側四番町148-1', features: '美味い', taste: '' },
-      { id: '127', name: '焼肉ダイニング甲 京都押小路本店', genre: '洋食・中華系', url: 'https://tabelog.com/kyoto/A2601/A260203/26021205/', area: '京都府京都市', address: '京都府京都市中京区等持寺町34-1 ペペ御所南 1F', features: '美味い', taste: '' },
-      { id: '128', name: '蔓牛', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2701/A270202/27010644/', area: '大阪府大阪市', address: '大阪府大阪市中央区瓦屋町3-5-14', features: '美味い　米も美味い　ちょい高め', taste: '' },
-      { id: '129', name: '天一', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2701/A270302/27030414/', area: '大阪府大阪市', address: '大阪府大阪市西淀川区柏里3-1-41', features: '美味い', taste: '' },
-      { id: '130', name: '焼肉ホルモンたっとん亭 平野店', genre: '洋食・中華系', url: 'nikuyamanshow.com', area: '大阪府大阪市', address: '大阪府大阪市平野区喜連西６丁目２−８０', features: '美味い', taste: '' },
-      { id: '131', name: '若葉屋 福島店', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2701/A270108/27005291/', area: '大阪府大阪市', address: '大阪府大阪市福島区福島7-1-10', features: '美味しそう', taste: '？' },
-      { id: '132', name: '元祖 札幌や', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2704/A270401/27000244/', area: '大阪府大阪市', address: '大阪府大阪市港区市岡1-4-23', features: '餃子めちゃ美味い、ラーメンいまいち', taste: '4' },
-      { id: '133', name: '無限麻辣湯', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2701/A270202/27093144/', area: '大阪府大阪市', address: '大阪府大阪市浪速区日本橋西1-1-14 第二牧ビル 1F', features: '四川的な辛さ', taste: '4' },
-      { id: '134', name: '上海', genre: '洋食・中華系', url: 'http://www.nau-now.com/shanghai/', area: '大阪府大阪市', address: '大阪府大阪市大正区千島１-１８-１２ ', features: '', taste: '5' },
-      { id: '135', name: '新大宮 中華のサカイ 本店', genre: '洋食・中華系', url: 'https://tabelog.com/kyoto/A2601/A260503/26001225/', area: '京都府京都市', address: '京都府京都市北区紫野上門前町新大宮商店街北大路上ル92', features: '美味い', taste: '' },
-      { id: '136', name: '三国亭', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2701/A270202/27001443/', area: '大阪府大阪市', address: '大阪府大阪市中央区島之内２丁目１７−６', features: '美味い', taste: '' },
-      { id: '137', name: '一芳亭 本店', genre: '洋食・中華系', url: 'http://www.ippoutei.com', area: '大阪府大阪市', address: '大阪府大阪市浪速区難波中2-6-22', features: 'しゅうまい、唐揚げ美味い', taste: '' },
-      { id: '138', name: '泉門天', genre: '洋食・中華系', url: 'https://tabelog.com/kyoto/A2601/A260601/26000035/', area: '京都府京都市', address: '京都府京都市東山区花見小路新橋下ル清本町３８０−３ 竹会館 1F', features: '美味い', taste: '' },
-      { id: '139', name: 'キングスポート', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2707/A270703/27037869/', area: '大阪府東大阪市', address: '大阪府東大阪市新家2-1-41', features: '量がめちゃめちゃ多い、コスパ良い', taste: '3' },
-      { id: '140', name: 'やろく レストラン本店', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2701/A270404/27002854/', area: '大阪府大阪市', address: '大阪府大阪市住吉区東粉浜3-30-16', features: 'たまごコロッケ、ポテトサラダがじゃがいもの味が優しい', taste: '4' },
-      { id: '141', name: 'ビッグ・ジョー 藤井寺店', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2708/A270801/27003508/', area: '大阪府藤井寺市', address: '大阪府藤井寺市野中2-66 ', features: '美味い', taste: '' },
-      { id: '142', name: 'グラタンのお店 どつぼどーる', genre: '洋食・中華系', url: 'https://tabelog.com/hyogo/A2803/A280303/28004183/', area: '兵庫県宝塚市', address: '兵庫県宝塚市逆瀬川1-13-27 トヨタビル 1F', features: '列車でグラタン届く', taste: '4' },
-      { id: '143', name: '火鍋三田 薬膳なつめ 北浜本店', genre: '洋食・中華系', url: 'https://tabelog.com/osaka/A2701/A270102/27128487/', area: '大阪府大阪市', address: '大阪府大阪市中央区平野町3-1-8 船場ろじの 店舗3', features: '辛くて美味しい', taste: '' },
-      { id: '144', name: 'タカムラ ワイン＆コーヒーロースターズ', genre: 'カフェ・軽食', url: 'https://takamuranet.com/', area: '大阪府大阪市', address: '大阪府大阪市西区江戸堀2丁目2-18', features: 'コーヒー豆の個性を引き出すことを最優先', taste: '' },
-      { id: '145', name: 'ENnoMADO/草樹庵', genre: 'カフェ・軽食', url: 'https://maps.app.goo.gl/CV3BMg2qsbL9bf126?g_st=com.google.maps.preview.copy', area: '大阪府枚方市', address: '大阪府枚方市茄子作北町３６−１１', features: '古民家、おしゃれ', taste: '' },
-      { id: '146', name: '居酒屋五感 神戸三宮', genre: '定食・和食系', url: 'https://tabelog.com/hyogo/A2801/A280101/28060447/', area: '', address: '', features: '', taste: '' },
-      { id: '147', name: 'GREEN HOUSE Silva', genre: '', url: '', area: '', address: '', features: '', taste: '' }
-    ];
 
     lucide.createIcons();
 
@@ -341,6 +230,13 @@
     const mapDetails = document.getElementById('map-details');
     const modal = document.getElementById('form-modal');
     const form = document.getElementById('restaurant-form');
+    
+    // Login Elements
+    const loginModal = document.getElementById('login-modal');
+    const roleBadge = document.getElementById('current-role-badge');
+    const btnLoginModal = document.getElementById('btn-login-modal');
+    const btnLogout = document.getElementById('btn-logout');
+    const addBtnContainer = document.getElementById('add-btn-container');
 
     // --- Authentication & Data Fetching ---
     const initAuth = async () => {
@@ -354,24 +250,18 @@
 
     onAuthStateChanged(auth, (user) => {
       if (!user) return;
-      // 今回はあなた専用のFirebaseに繋ぐため、シンプルなパスに変更します
       const collRef = collection(db, 'restaurants');
       
       onSnapshot(collRef, (snapshot) => {
-        if (snapshot.empty && restaurants.length === 0) {
-          // Firebaseが空っぽの場合、CSVのデータを自動で流し込みます
-          INITIAL_DATA.forEach(async (item) => {
-            await setDoc(doc(collRef, item.id), item);
-          });
-        } else {
+        if (!snapshot.empty) {
           restaurants = snapshot.docs.map(doc => {
             const data = doc.data();
             return { id: doc.id, pref: extractPrefecture(data.area), ...data };
           });
           updateFiltersOptions();
+          updateUIByRole(); // 権限に合わせてUIを更新
           renderList();
         }
-      }, (error) => {
       }, (error) => {
         console.error("Firestore Error:", error);
       });
@@ -383,7 +273,6 @@
       const match = area.match(/(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/);
       if (match) return match[0];
       
-      // 府・県が省略されているケースの補完
       if (area.includes('大阪') || area.includes('堺市') || area.includes('池田市') || area.includes('豊中市') || area.includes('守口市') || area.includes('羽曳野市') || area.includes('大東市') || area.includes('泉佐野市') || area.includes('河内長野市')) return '大阪府';
       if (area.includes('兵庫') || area.includes('神戸市') || area.includes('西宮市') || area.includes('尼崎市') || area.includes('宝塚市') || area.includes('姫路市') || area.includes('伊丹市') || area.includes('三田市') || area.includes('加東市') || area.includes('丹波市') || area.includes('丹波篠山市')) return '兵庫県';
       if (area.includes('京都') || area.includes('宇治市') || area.includes('城陽市') || area.includes('福知山市')) return '京都府';
@@ -394,8 +283,6 @@
 
     function updateFiltersOptions() {
       const prefs = [...new Set(restaurants.map(r => r.pref).filter(Boolean))].sort();
-      
-      // 選択された都道府県に属するエリアのみ抽出
       let filteredForArea = restaurants;
       if (selectedPref) {
         filteredForArea = restaurants.filter(r => r.pref === selectedPref);
@@ -406,6 +293,29 @@
       filterPrefEl.innerHTML = '<option value="">すべての都道府県</option>' + prefs.map(p => `<option value="${p}" ${p === selectedPref ? 'selected' : ''}>${p}</option>`).join('');
       filterAreaEl.innerHTML = '<option value="">すべてのエリア</option>' + areas.map(a => `<option value="${a}" ${a === selectedArea ? 'selected' : ''}>${a}</option>`).join('');
       filterGenreEl.innerHTML = '<option value="">すべてのジャンル</option>' + genres.map(g => `<option value="${g}" ${g === selectedGenre ? 'selected' : ''}>${g}</option>`).join('');
+    }
+
+    function updateUIByRole() {
+      // 権限バッジとボタンの表示切り替え
+      if (currentRole === 'admin') {
+        roleBadge.textContent = '管理者モード';
+        roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-red-100 text-red-700 border border-red-200';
+        btnLoginModal.classList.add('hidden');
+        btnLogout.classList.remove('hidden');
+        addBtnContainer.classList.remove('hidden');
+      } else if (currentRole === 'editor') {
+        roleBadge.textContent = '編集者モード';
+        roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 border border-blue-200';
+        btnLoginModal.classList.add('hidden');
+        btnLogout.classList.remove('hidden');
+        addBtnContainer.classList.remove('hidden');
+      } else {
+        roleBadge.textContent = '閲覧モード';
+        roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-gray-200 text-gray-600';
+        btnLoginModal.classList.remove('hidden');
+        btnLogout.classList.add('hidden');
+        addBtnContainer.classList.add('hidden');
+      }
     }
 
     function renderList() {
@@ -430,15 +340,15 @@
           const bgClass = isActive ? 'border-orange-500 bg-orange-50/50 ring-1 ring-orange-500' : 'border-gray-200 hover:border-orange-300 hover:bg-orange-50/20';
           
           let actionButtons = '';
-          if (isActive) {
+          if (isActive && currentRole !== 'viewer') {
             let adminOrEditorBtns = '';
-            if (isAdmin) {
+            if (currentRole === 'admin') {
               const deleteBtnText = r.deleteRequested ? '削除を承認' : '削除';
               adminOrEditorBtns += `<button class="btn-delete text-sm text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-md flex items-center gap-1 shadow-sm"><i data-lucide="trash-2" class="w-4 h-4"></i> ${deleteBtnText}</button>`;
               if (r.deleteRequested) {
                 adminOrEditorBtns += `<button class="btn-cancel-request text-sm text-gray-600 bg-white border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-md flex items-center gap-1 shadow-sm">依頼取消</button>`;
               }
-            } else {
+            } else if (currentRole === 'editor') {
               if (!r.deleteRequested) {
                 adminOrEditorBtns += `<button class="btn-request-delete text-sm text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-md flex items-center gap-1 shadow-sm"><i data-lucide="alert-circle" class="w-4 h-4"></i> 削除を依頼</button>`;
               } else {
@@ -454,7 +364,7 @@
             `;
           }
 
-          let deleteBadge = r.deleteRequested ? `<span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-bold flex items-center gap-1 border border-red-200"><i data-lucide="alert-circle" class="w-3 h-3"></i> 削除依頼あり</span>` : '';
+          let deleteBadge = r.deleteRequested && currentRole === 'admin' ? `<span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-bold flex items-center gap-1 border border-red-200"><i data-lucide="alert-circle" class="w-3 h-3"></i> 削除依頼あり</span>` : '';
 
           return `
             <div class="restaurant-card p-4 rounded-lg border cursor-pointer transition-all ${bgClass}" data-id="${r.id}">
@@ -478,7 +388,7 @@
 
     function updateMap() {
       const activeRestaurant = restaurants.find(r => r.id === activeRestaurantId);
-      const query = activeRestaurant ? activeRestaurant.address : (selectedArea || '大阪');
+      const query = activeRestaurant ? activeRestaurant.address : (selectedArea || selectedPref || '大阪');
       const zoom = activeRestaurant ? 16 : 11;
       
       mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=${zoom}&ie=UTF8&iwloc=&output=embed`;
@@ -521,11 +431,52 @@
     }
 
     // --- Event Listeners ---
+    
+    // Login System
+    btnLoginModal.addEventListener('click', () => {
+      document.getElementById('password-input').value = '';
+      document.getElementById('login-error').classList.add('hidden');
+      loginModal.classList.remove('hidden');
+    });
+    
+    document.getElementById('btn-close-login').addEventListener('click', () => {
+      loginModal.classList.add('hidden');
+    });
+
+    document.getElementById('btn-submit-login').addEventListener('click', () => {
+      const pwd = document.getElementById('password-input').value;
+      if (pwd === ADMIN_PASSWORD) {
+        currentRole = 'admin';
+        localStorage.setItem('okalogo_role', 'admin');
+        loginModal.classList.add('hidden');
+        updateUIByRole();
+        renderList();
+      } else if (pwd === EDITOR_PASSWORD) {
+        currentRole = 'editor';
+        localStorage.setItem('okalogo_role', 'editor');
+        loginModal.classList.add('hidden');
+        updateUIByRole();
+        renderList();
+      } else {
+        document.getElementById('login-error').classList.remove('hidden');
+      }
+    });
+
+    btnLogout.addEventListener('click', () => {
+      currentRole = 'viewer';
+      localStorage.removeItem('okalogo_role');
+      activeRestaurantId = null;
+      updateUIByRole();
+      renderList();
+      updateMap();
+    });
+
+    // Filters & Add Button
     filterPrefEl.addEventListener('change', (e) => { 
       selectedPref = e.target.value; 
-      selectedArea = ''; // 都道府県が変わったらエリアはリセット
+      selectedArea = ''; 
       activeRestaurantId = null; 
-      updateFiltersOptions(); // エリアの選択肢を更新
+      updateFiltersOptions(); 
       renderList(); 
       updateMap(); 
     });
@@ -586,24 +537,6 @@
       await setDoc(doc(db, 'restaurants', id), payload, { merge: true });
       closeModal();
     });
-
-    // Admin/Editor Toggle Switches
-    const btnAdmin = document.getElementById('btn-admin');
-    const btnEditor = document.getElementById('btn-editor');
-    
-    function updateAuthUI() {
-      if (isAdmin) {
-        btnAdmin.className = "px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-orange-500 text-white shadow";
-        btnEditor.className = "px-3 py-1.5 rounded-md text-sm font-bold transition-colors text-gray-500 hover:bg-gray-200";
-      } else {
-        btnAdmin.className = "px-3 py-1.5 rounded-md text-sm font-bold transition-colors text-gray-500 hover:bg-gray-200";
-        btnEditor.className = "px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-blue-500 text-white shadow";
-      }
-      renderList();
-    }
-
-    btnAdmin.addEventListener('click', () => { isAdmin = true; updateAuthUI(); });
-    btnEditor.addEventListener('click', () => { isAdmin = false; updateAuthUI(); });
 
   </script>
 </body>
