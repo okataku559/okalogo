@@ -29,20 +29,28 @@
     <div class="w-full lg:w-1/2 flex flex-col gap-4">
       
       <!-- Controls -->
-      <div class="bg-white p-4 rounded-xl shadow-sm border flex flex-col sm:flex-row gap-3">
-        <div class="flex-1">
-          <label class="block text-xs font-semibold text-gray-500 mb-1">エリア</label>
-          <select id="filter-area" class="w-full border-gray-300 rounded-lg shadow-sm p-2 bg-gray-50 focus:ring-orange-500 focus:border-orange-500 outline-none border">
-            <option value="">すべてのエリア</option>
-          </select>
+      <div class="bg-white p-4 rounded-xl shadow-sm border flex flex-col gap-3">
+        <div class="flex flex-col sm:flex-row gap-3">
+          <div class="flex-1">
+            <label class="block text-xs font-semibold text-gray-500 mb-1">都道府県</label>
+            <select id="filter-pref" class="w-full border-gray-300 rounded-lg shadow-sm p-2 bg-gray-50 focus:ring-orange-500 focus:border-orange-500 outline-none border">
+              <option value="">すべての都道府県</option>
+            </select>
+          </div>
+          <div class="flex-1">
+            <label class="block text-xs font-semibold text-gray-500 mb-1">エリア</label>
+            <select id="filter-area" class="w-full border-gray-300 rounded-lg shadow-sm p-2 bg-gray-50 focus:ring-orange-500 focus:border-orange-500 outline-none border">
+              <option value="">すべてのエリア</option>
+            </select>
+          </div>
+          <div class="flex-1">
+            <label class="block text-xs font-semibold text-gray-500 mb-1">ジャンル</label>
+            <select id="filter-genre" class="w-full border-gray-300 rounded-lg shadow-sm p-2 bg-gray-50 focus:ring-orange-500 focus:border-orange-500 outline-none border">
+              <option value="">すべてのジャンル</option>
+            </select>
+          </div>
         </div>
-        <div class="flex-1">
-          <label class="block text-xs font-semibold text-gray-500 mb-1">ジャンル</label>
-          <select id="filter-genre" class="w-full border-gray-300 rounded-lg shadow-sm p-2 bg-gray-50 focus:ring-orange-500 focus:border-orange-500 outline-none border">
-            <option value="">すべてのジャンル</option>
-          </select>
-        </div>
-        <div class="flex items-end">
+        <div class="flex justify-end">
           <button id="btn-add" class="w-full sm:w-auto bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors">
             <i data-lucide="plus" class="w-5 h-5"></i> お店を追加
           </button>
@@ -166,6 +174,7 @@
     let restaurants = [];
     let isAdmin = true;
     let activeRestaurantId = null;
+    let selectedPref = '';
     let selectedArea = '';
     let selectedGenre = '';
 
@@ -324,6 +333,7 @@
 
     // --- DOM Elements ---
     const listEl = document.getElementById('restaurant-list');
+    const filterPrefEl = document.getElementById('filter-pref');
     const filterAreaEl = document.getElementById('filter-area');
     const filterGenreEl = document.getElementById('filter-genre');
     const listCountEl = document.getElementById('list-count');
@@ -354,29 +364,56 @@
             await setDoc(doc(collRef, item.id), item);
           });
         } else {
-          restaurants = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          restaurants = snapshot.docs.map(doc => {
+            const data = doc.data();
+            return { id: doc.id, pref: extractPrefecture(data.area), ...data };
+          });
           updateFiltersOptions();
           renderList();
         }
+      }, (error) => {
       }, (error) => {
         console.error("Firestore Error:", error);
       });
     });
 
     // --- Core Functions ---
+    function extractPrefecture(area) {
+      if (!area) return '';
+      const match = area.match(/(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/);
+      if (match) return match[0];
+      
+      // 府・県が省略されているケースの補完
+      if (area.includes('大阪') || area.includes('堺市') || area.includes('池田市') || area.includes('豊中市') || area.includes('守口市') || area.includes('羽曳野市') || area.includes('大東市') || area.includes('泉佐野市') || area.includes('河内長野市')) return '大阪府';
+      if (area.includes('兵庫') || area.includes('神戸市') || area.includes('西宮市') || area.includes('尼崎市') || area.includes('宝塚市') || area.includes('姫路市') || area.includes('伊丹市') || area.includes('三田市') || area.includes('加東市') || area.includes('丹波市') || area.includes('丹波篠山市')) return '兵庫県';
+      if (area.includes('京都') || area.includes('宇治市') || area.includes('城陽市') || area.includes('福知山市')) return '京都府';
+      if (area.includes('和歌山') || area.includes('紀の川市') || area.includes('東牟婁郡') || area.includes('有田郡')) return '和歌山県';
+
+      return 'その他';
+    }
+
     function updateFiltersOptions() {
-      const areas = [...new Set(restaurants.map(r => r.area).filter(Boolean))].sort();
+      const prefs = [...new Set(restaurants.map(r => r.pref).filter(Boolean))].sort();
+      
+      // 選択された都道府県に属するエリアのみ抽出
+      let filteredForArea = restaurants;
+      if (selectedPref) {
+        filteredForArea = restaurants.filter(r => r.pref === selectedPref);
+      }
+      const areas = [...new Set(filteredForArea.map(r => r.area).filter(Boolean))].sort();
       const genres = [...new Set(restaurants.map(r => r.genre).filter(Boolean))].sort();
       
+      filterPrefEl.innerHTML = '<option value="">すべての都道府県</option>' + prefs.map(p => `<option value="${p}" ${p === selectedPref ? 'selected' : ''}>${p}</option>`).join('');
       filterAreaEl.innerHTML = '<option value="">すべてのエリア</option>' + areas.map(a => `<option value="${a}" ${a === selectedArea ? 'selected' : ''}>${a}</option>`).join('');
       filterGenreEl.innerHTML = '<option value="">すべてのジャンル</option>' + genres.map(g => `<option value="${g}" ${g === selectedGenre ? 'selected' : ''}>${g}</option>`).join('');
     }
 
     function renderList() {
       const filtered = restaurants.filter(r => {
+        const matchPref = selectedPref ? r.pref === selectedPref : true;
         const matchArea = selectedArea ? r.area === selectedArea : true;
         const matchGenre = selectedGenre ? r.genre === selectedGenre : true;
-        return matchArea && matchGenre;
+        return matchPref && matchArea && matchGenre;
       });
 
       listCountEl.textContent = filtered.length;
@@ -484,6 +521,14 @@
     }
 
     // --- Event Listeners ---
+    filterPrefEl.addEventListener('change', (e) => { 
+      selectedPref = e.target.value; 
+      selectedArea = ''; // 都道府県が変わったらエリアはリセット
+      activeRestaurantId = null; 
+      updateFiltersOptions(); // エリアの選択肢を更新
+      renderList(); 
+      updateMap(); 
+    });
     filterAreaEl.addEventListener('change', (e) => { selectedArea = e.target.value; activeRestaurantId = null; renderList(); updateMap(); });
     filterGenreEl.addEventListener('change', (e) => { selectedGenre = e.target.value; activeRestaurantId = null; renderList(); updateMap(); });
     
