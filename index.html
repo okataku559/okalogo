@@ -294,7 +294,10 @@
         if (!snapshot.empty) {
           restaurants = snapshot.docs.map(doc => {
             const data = doc.data();
-            return { id: doc.id, pref: extractPrefecture(data.area), ...data };
+            // ★エリア名の表記ゆれ（都道府県の有無）をなくすため、都道府県名をカットして統一
+            let cleanArea = data.area || '';
+            cleanArea = cleanArea.replace(/^(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/, '');
+            return { id: doc.id, pref: extractPrefecture(data.area), normalizedArea: cleanArea, ...data };
           });
           updateFiltersOptions();
           updateUIByRole(); // 権限に合わせてUIを更新
@@ -375,7 +378,8 @@
       if (selectedPref) {
         filteredForArea = restaurants.filter(r => r.pref === selectedPref);
       }
-      const areas = [...new Set(filteredForArea.map(r => r.area).filter(Boolean))].sort();
+      // ★表記ゆれをなくした normalizedArea で選択肢を作成
+      const areas = [...new Set(filteredForArea.map(r => r.normalizedArea).filter(Boolean))].sort();
       const genres = [...new Set(restaurants.map(r => r.genre).filter(Boolean))].sort();
       
       filterPrefEl.innerHTML = '<option value="">すべての都道府県</option>' + prefs.map(p => `<option value="${p}" ${p === selectedPref ? 'selected' : ''}>${p}</option>`).join('');
@@ -408,7 +412,7 @@
     function renderList() {
       const filtered = restaurants.filter(r => {
         const matchPref = selectedPref ? r.pref === selectedPref : true;
-        const matchArea = selectedArea ? r.area === selectedArea : true;
+        const matchArea = selectedArea ? r.normalizedArea === selectedArea : true; // ★normalizedAreaで判定
         const matchGenre = selectedGenre ? r.genre === selectedGenre : true;
         return matchPref && matchArea && matchGenre;
       });
@@ -500,7 +504,7 @@
               </div>
               <div class="flex flex-wrap gap-2 mt-2">
                 ${r.genre ? `<span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-md">${r.genre}</span>` : ''}
-                ${r.area ? `<span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-md">${r.area}</span>` : ''}
+                ${r.normalizedArea ? `<span class="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-md">${r.normalizedArea}</span>` : ''}
                 ${starsHtml}
               </div>
               ${scenesHtml}
