@@ -11,6 +11,7 @@
 
   <!-- Header -->
   <header class="bg-white shadow-sm border-b px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <!-- ロゴクリックでHOME（初期状態）に戻る -->
     <div id="btn-home" class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity">
       <i data-lucide="utensils" class="text-orange-500 w-7 h-7"></i>
       <h1 class="text-2xl font-bold text-gray-800 tracking-tight">おかログ</h1>
@@ -109,6 +110,7 @@
         </p>
         <div class="relative">
           <input type="password" id="password-input" class="w-full border-gray-300 rounded-md shadow-sm p-2 pr-10 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="合言葉を入力">
+          <!-- 目玉アイコン -->
           <button type="button" id="btn-toggle-password" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700 transition-colors">
             <i data-lucide="eye" id="password-eye-icon" class="w-5 h-5"></i>
           </button>
@@ -147,7 +149,7 @@
           <div class="flex gap-4">
             <div class="flex-1">
               <label class="block text-sm font-medium text-gray-700 mb-1">ジャンル <span class="text-red-500">*</span></label>
-              <!-- ▼ ジャンルをプルダウンに変更 ▼ -->
+              <!-- ジャンルをプルダウンに変更 -->
               <select required id="form-genre" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none">
                 <option value="">選択してください</option>
                 <option value="定食・和食系">定食・和食系</option>
@@ -162,7 +164,7 @@
             </div>
             <div class="flex-1">
               <label class="block text-sm font-medium text-gray-700 mb-1">エリア (自動反映)</label>
-              <!-- ▼ エリアは住所から自動反映されるため、入力不可（readonly）に ▼ -->
+              <!-- エリアは住所から自動反映されるためreadonly -->
               <input type="text" id="form-area" readonly class="w-full border-gray-200 rounded-md shadow-sm p-2 bg-gray-100 text-gray-500 border outline-none cursor-not-allowed" placeholder="住所を入れると反映されます">
             </div>
           </div>
@@ -178,7 +180,7 @@
           </div>
 
           <div>
-            <!-- ▼ 満足度を★で選択できるように変更 ▼ -->
+            <!-- 満足度を★で選択できるように変更 -->
             <label class="block text-sm font-medium text-gray-700 mb-2">満足度</label>
             <div class="flex gap-2 items-center">
               <div id="form-taste-container" class="flex gap-1">
@@ -194,7 +196,7 @@
           </div>
 
           <div>
-            <!-- ▼ おすすめのシーンを複数選択（チェックボックス）に変更 ▼ -->
+            <!-- おすすめのシーン（一人で追加） -->
             <label class="block text-sm font-medium text-gray-700 mb-2">おすすめのシーン（複数選択可）</label>
             <div class="flex flex-wrap gap-3">
               <label class="flex items-center gap-2 cursor-pointer bg-white border border-gray-300 px-3 py-2 rounded-md hover:bg-orange-50 transition-colors"><input type="checkbox" value="一人で" class="scene-cb w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500"> <span class="text-sm font-medium text-gray-700">一人で</span></label>
@@ -223,7 +225,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-analytics.js";
 
     // --- あなた専用の Firebase Config ---
     const firebaseConfig = {
@@ -237,16 +238,13 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
     // --- 権限管理 (難読化済みパスワード) ---
-    // ソースコードから直接見えないようにBase64エンコードで変換しています
-    const KEY_A = "b2thdGFrdTE5ODQ="; // 管理者
-    const KEY_E = "b2thdGFrdUZyaWVuZA=="; // 編集者
+    const KEY_A = "b2thdGFrdTE5ODQ="; // 管理者: okataku1984
+    const KEY_E = "b2thdGFrdUZyaWVuZA=="; // 編集者: okatakuFriend
     
-    // 現在の権限ステータス ('viewer', 'editor', 'admin')
     let currentRole = localStorage.getItem('okalogo_role') || 'viewer';
 
     // --- State ---
@@ -297,10 +295,11 @@
             // ★エリア名の表記ゆれ（都道府県の有無）をなくすため、都道府県名をカットして統一
             let cleanArea = data.area || '';
             cleanArea = cleanArea.replace(/^(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/, '');
+            
             return { id: doc.id, pref: extractPrefecture(data.area), normalizedArea: cleanArea, ...data };
           });
           updateFiltersOptions();
-          updateUIByRole(); // 権限に合わせてUIを更新
+          updateUIByRole();
           renderList();
         }
       }, (error) => {
@@ -330,7 +329,6 @@
       if (match) {
         return (match[1] || '') + match[2]; // 例: 大阪府 + 大阪市
       }
-      // マッチしない場合は最初のスペースまでをエリアとする
       const spaceIndex = address.search(/[\s　]/);
       return spaceIndex > -1 ? address.substring(0, spaceIndex) : address;
     }
@@ -340,7 +338,7 @@
       document.getElementById('form-area').value = extractAreaFromAddress(e.target.value);
     });
 
-    // ★満足度の星を光らせる処理
+    // ★満足度の星を光らせる処理（色分け付き）
     const tasteStars = document.querySelectorAll('.taste-star');
     const tasteInput = document.getElementById('form-taste');
     const tasteLabel = document.getElementById('taste-label');
@@ -355,13 +353,12 @@
 
       tasteStars.forEach(star => {
         const starVal = parseInt(star.dataset.val);
-        // 一旦すべての色をリセット
         star.classList.remove('text-gray-300', 'text-blue-500', 'text-green-500', 'text-yellow-500', 'text-orange-500', 'text-red-500');
         
         if (starVal <= val) {
-          star.classList.add(activeColor); // 選ばれた星以下のものに色をつける
+          star.classList.add(activeColor);
         } else {
-          star.classList.add('text-gray-300'); // 選ばれていないものはグレー
+          star.classList.add('text-gray-300');
         }
       });
     }
@@ -378,7 +375,7 @@
       if (selectedPref) {
         filteredForArea = restaurants.filter(r => r.pref === selectedPref);
       }
-      // ★表記ゆれをなくした normalizedArea で選択肢を作成
+      // 表記ゆれをなくした normalizedArea で選択肢を作成
       const areas = [...new Set(filteredForArea.map(r => r.normalizedArea).filter(Boolean))].sort();
       const genres = [...new Set(restaurants.map(r => r.genre).filter(Boolean))].sort();
       
@@ -412,7 +409,7 @@
     function renderList() {
       const filtered = restaurants.filter(r => {
         const matchPref = selectedPref ? r.pref === selectedPref : true;
-        const matchArea = selectedArea ? r.normalizedArea === selectedArea : true; // ★normalizedAreaで判定
+        const matchArea = selectedArea ? r.normalizedArea === selectedArea : true; // normalizedAreaで判定
         const matchGenre = selectedGenre ? r.genre === selectedGenre : true;
         return matchPref && matchArea && matchGenre;
       });
@@ -457,7 +454,7 @@
 
           let deleteBadge = r.deleteRequested && currentRole === 'admin' ? `<span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-bold flex items-center gap-1 border border-red-200"><i data-lucide="alert-circle" class="w-3 h-3"></i> 削除依頼あり</span>` : '';
 
-          // ★満足度を星アイコンと色で表示
+          // 満足度を星アイコンと色で表示
           let starsHtml = '';
           const tasteNum = parseInt(r.taste);
           if (tasteNum > 0 && tasteNum <= 5) {
@@ -476,7 +473,7 @@
              starsHtml = `<span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-md border border-gray-200 font-medium flex items-center gap-1">満足度: ${r.taste}</span>`;
           }
 
-          // ★おすすめシーンをタグで表示
+          // おすすめシーンをタグで表示
           let scenesHtml = '';
           if (r.scenes && r.scenes.length > 0) {
             scenesHtml = `<div class="flex flex-wrap gap-1 mt-2">`;
@@ -486,7 +483,7 @@
             scenesHtml += `</div>`;
           }
 
-          // ★URLリンクとGoogle Mapリンクを店名の横に配置
+          // URLリンクとGoogle Mapリンクを店名の横に配置
           let urlLinkHtml = r.url ? `<a href="${r.url}" target="_blank" onclick="event.stopPropagation()" class="text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center gap-1 bg-blue-50 px-2 py-1 rounded border border-blue-200 shadow-sm transition-colors"><i data-lucide="external-link" class="w-3 h-3"></i> 公式等</a>` : '';
           let mapLinkHtml = r.address ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}" target="_blank" onclick="event.stopPropagation()" class="text-orange-600 hover:text-orange-800 text-xs font-medium flex items-center gap-1 bg-orange-50 px-2 py-1 rounded border border-orange-200 shadow-sm transition-colors"><i data-lucide="map-pin" class="w-3 h-3"></i> Map</a>` : '';
 
@@ -525,7 +522,7 @@
       mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=${zoom}&ie=UTF8&iwloc=&output=embed`;
 
       if (activeRestaurant) {
-        // ★リンクをリスト側に移動したため、詳細パネルはスッキリと店名と住所のみにしました
+        // リンクをリスト側に移動したため、詳細パネルはスッキリと店名と住所のみに
         mapDetails.innerHTML = `
           <div class="flex flex-col gap-1">
             <h4 class="font-bold text-gray-800 text-lg">${activeRestaurant.name}</h4>
@@ -557,7 +554,6 @@
       const dataScenes = data?.scenes || [];
       sceneCbs.forEach(cb => {
         cb.checked = dataScenes.includes(cb.value);
-        // 見た目のためのクラス付与
         if(cb.checked) {
            cb.parentElement.classList.add('bg-orange-50', 'border-orange-500');
            cb.parentElement.classList.remove('bg-white', 'border-gray-300');
@@ -586,7 +582,6 @@
     // Login System
     btnLoginModal.addEventListener('click', () => {
       document.getElementById('password-input').value = '';
-      // モーダルを開くたびにパスワードを非表示状態にリセット
       document.getElementById('password-input').setAttribute('type', 'password');
       document.getElementById('password-eye-icon').setAttribute('data-lucide', 'eye');
       lucide.createIcons();
@@ -639,7 +634,6 @@
     // メールリクエストボタンの処理 (メアドをソースに直接書かないスパム対策)
     document.getElementById('btn-request-mail').addEventListener('click', (e) => {
       e.preventDefault();
-      // メアドをプログラム実行時に復号化します
       const m = atob('dGFrdXlhLm9rYXphd2FAZ21haWwuY29t');
       const s = encodeURIComponent('【おかログ】編集権限の申請');
       const b = encodeURIComponent('おかログにお店を追加したいです。\n編集用の合言葉を教えてください！');
@@ -657,13 +651,11 @@
 
     // HOMEボタン (ロゴクリックで初期状態に戻る)
     document.getElementById('btn-home').addEventListener('click', () => {
-      // 選択状態をすべてリセット
       selectedPref = '';
       selectedArea = '';
       selectedGenre = '';
       activeRestaurantId = null;
       
-      // プルダウンの表示を初期値に戻す
       filterPrefEl.value = '';
       filterAreaEl.value = '';
       filterGenreEl.value = '';
@@ -737,7 +729,6 @@
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      // 選択されたシーンを取得
       const sceneCbs = document.querySelectorAll('.scene-cb:checked');
       const scenes = Array.from(sceneCbs).map(cb => cb.value);
 
@@ -751,7 +742,7 @@
         url: document.getElementById('form-url').value,
         features: document.getElementById('form-features').value,
         taste: document.getElementById('form-taste').value,
-        scenes: scenes, // シーンを追加
+        scenes: scenes,
         updatedAt: new Date().toISOString()
       };
       
