@@ -18,6 +18,12 @@
     </div>
     <div class="flex items-center gap-4 bg-gray-100 p-1.5 rounded-lg border">
       <span id="current-role-badge" class="text-sm font-bold px-3 py-1.5 rounded-md bg-gray-200 text-gray-600">閲覧モード</span>
+      
+      <!-- 管理者専用の隠しメニュー（データ出力用） -->
+      <button id="btn-export-csv" class="hidden px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-green-500 text-white shadow hover:bg-green-600">
+        <i data-lucide="download" class="w-4 h-4 inline-block mr-1"></i>CSV出力
+      </button>
+
       <button id="btn-login-modal" class="px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-orange-500 text-white shadow hover:bg-orange-600">
         編集ログイン
       </button>
@@ -149,23 +155,28 @@
           <div class="flex gap-4">
             <div class="flex-1">
               <label class="block text-sm font-medium text-gray-700 mb-1">ジャンル <span class="text-red-500">*</span></label>
-              <!-- ▼ 麺類を細分化してジャンルを更新 ▼ -->
+              <!-- 大手グルメサイト基準の20ジャンル -->
               <select required id="form-genre" class="w-full border-gray-300 rounded-md shadow-sm p-2 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none">
                 <option value="">選択してください</option>
-                <option value="和食・定食">和食・定食</option>
+                <option value="和食・日本料理">和食・日本料理</option>
+                <option value="寿司・海鮮">寿司・海鮮</option>
+                <option value="焼き鳥・鳥料理">焼き鳥・鳥料理</option>
+                <option value="鍋（しゃぶしゃぶ・もつ鍋等）">鍋（しゃぶしゃぶ・もつ鍋等）</option>
+                <option value="イタリアン・フレンチ">イタリアン・フレンチ</option>
                 <option value="洋食・西洋料理">洋食・西洋料理</option>
                 <option value="中華料理">中華料理</option>
-                <option value="アジア・エスニック">アジア・エスニック</option>
                 <option value="焼肉・ホルモン">焼肉・ホルモン</option>
-                <option value="寿司・海鮮">寿司・海鮮</option>
-                <option value="居酒屋・バー">居酒屋・バー</option>
+                <option value="韓国料理">韓国料理</option>
+                <option value="アジア・エスニック">アジア・エスニック</option>
                 <option value="ラーメン">ラーメン</option>
                 <option value="うどん">うどん</option>
                 <option value="そば">そば</option>
-                <option value="その他麺類">その他麺類</option>
                 <option value="お好み焼き・粉もん">お好み焼き・粉もん</option>
                 <option value="カレー">カレー</option>
+                <option value="居酒屋・ダイニングバー">居酒屋・ダイニングバー</option>
+                <option value="バー・お酒">バー・お酒</option>
                 <option value="カフェ・スイーツ">カフェ・スイーツ</option>
+                <option value="パン・ハンバーガー">パン・ハンバーガー</option>
                 <option value="その他">その他</option>
               </select>
             </div>
@@ -280,6 +291,7 @@
     const btnLoginModal = document.getElementById('btn-login-modal');
     const btnLogout = document.getElementById('btn-logout');
     const addBtnContainer = document.getElementById('add-btn-container');
+    const btnExportCsv = document.getElementById('btn-export-csv');
 
     // --- Authentication & Data Fetching ---
     const initAuth = async () => {
@@ -299,7 +311,7 @@
         if (!snapshot.empty) {
           restaurants = snapshot.docs.map(doc => {
             const data = doc.data();
-            // ★エリア名の表記ゆれ（都道府県の有無）をなくすため、都道府県名をカットして統一
+            // エリア名の表記ゆれ（都道府県の有無）をなくすため、都道府県名をカットして統一
             let cleanArea = data.area || '';
             cleanArea = cleanArea.replace(/^(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/, '');
             
@@ -345,7 +357,7 @@
       document.getElementById('form-area').value = extractAreaFromAddress(e.target.value);
     });
 
-    // ★満足度の星を光らせる処理（色分け付き）
+    // 満足度の星を光らせる処理（色分け付き）
     const tasteStars = document.querySelectorAll('.taste-star');
     const tasteInput = document.getElementById('form-taste');
     const tasteLabel = document.getElementById('taste-label');
@@ -398,18 +410,21 @@
         btnLoginModal.classList.add('hidden');
         btnLogout.classList.remove('hidden');
         addBtnContainer.classList.remove('hidden');
+        btnExportCsv.classList.remove('hidden');
       } else if (currentRole === 'editor') {
         roleBadge.textContent = '編集者モード';
         roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 border border-blue-200';
         btnLoginModal.classList.add('hidden');
         btnLogout.classList.remove('hidden');
         addBtnContainer.classList.remove('hidden');
+        btnExportCsv.classList.add('hidden');
       } else {
         roleBadge.textContent = '閲覧モード';
         roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-gray-200 text-gray-600';
         btnLoginModal.classList.remove('hidden');
         btnLogout.classList.add('hidden');
         addBtnContainer.classList.add('hidden');
+        btnExportCsv.classList.add('hidden');
       }
     }
 
@@ -654,6 +669,44 @@
       updateUIByRole();
       renderList();
       updateMap();
+    });
+
+    // CSVエクスポート機能
+    btnExportCsv.addEventListener('click', () => {
+      if (restaurants.length === 0) return alert('出力するデータがありません。');
+      
+      // CSVのヘッダー
+      const headers = ['id', 'name', 'genre', 'area', 'address', 'url', 'taste', 'features', 'scenes'];
+      
+      // データをCSV形式の文字列に変換
+      const csvRows = [];
+      csvRows.push(headers.join(','));
+      
+      restaurants.forEach(r => {
+        const row = [
+          r.id || '',
+          `"${(r.name || '').replace(/"/g, '""')}"`,
+          `"${(r.genre || '').replace(/"/g, '""')}"`,
+          `"${(r.area || '').replace(/"/g, '""')}"`,
+          `"${(r.address || '').replace(/"/g, '""')}"`,
+          `"${(r.url || '').replace(/"/g, '""')}"`,
+          r.taste || '',
+          `"${(r.features || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
+          `"${(r.scenes || []).join('|')}"`
+        ];
+        csvRows.push(row.join(','));
+      });
+      
+      // BOM付きでダウンロード
+      const csvContent = "\uFEFF" + csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `okalogo_data_${new Date().toISOString().slice(0,10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     });
 
     // HOMEボタン (ロゴクリックで初期状態に戻る)
