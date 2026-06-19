@@ -321,11 +321,18 @@
         if (!snapshot.empty) {
           restaurants = snapshot.docs.map(doc => {
             const data = doc.data();
-            // エリア名の表記ゆれ（都道府県の有無）をなくすため、都道府県名をカットして統一
-            let cleanArea = data.area || '';
+            
+            // ★住所からエリアを自動判定・細分化する（キタ、ミナミなど）
+            let cleanArea = '';
+            if (data.address) {
+              cleanArea = extractAreaFromAddress(data.address);
+            } else {
+              cleanArea = data.area || '';
+            }
+            // 都道府県名をカットしてスッキリさせる
             cleanArea = cleanArea.replace(/^(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/, '');
             
-            return { id: doc.id, pref: extractPrefecture(data.area), normalizedArea: cleanArea, ...data };
+            return { id: doc.id, pref: extractPrefecture(data.address || data.area), normalizedArea: cleanArea, ...data };
           });
           updateFiltersOptions();
           updateUIByRole();
@@ -338,25 +345,55 @@
 
     // --- Core Functions ---
     // 住所またはエリアから「都道府県」を抽出
-    function extractPrefecture(area) {
-      if (!area) return '';
-      const match = area.match(/(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/);
+    function extractPrefecture(text) {
+      if (!text) return '';
+      const match = text.match(/(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/);
       if (match) return match[0];
       
-      if (area.includes('大阪') || area.includes('堺市') || area.includes('池田市') || area.includes('豊中市') || area.includes('守口市') || area.includes('羽曳野市') || area.includes('大東市') || area.includes('泉佐野市') || area.includes('河内長野市')) return '大阪府';
-      if (area.includes('兵庫') || area.includes('神戸市') || area.includes('西宮市') || area.includes('尼崎市') || area.includes('宝塚市') || area.includes('姫路市') || area.includes('伊丹市') || area.includes('三田市') || area.includes('加東市') || area.includes('丹波市') || area.includes('丹波篠山市')) return '兵庫県';
-      if (area.includes('京都') || area.includes('宇治市') || area.includes('城陽市') || area.includes('福知山市')) return '京都府';
-      if (area.includes('和歌山') || area.includes('紀の川市') || area.includes('東牟婁郡') || area.includes('有田郡')) return '和歌山県';
+      if (text.includes('大阪') || text.includes('堺市') || text.includes('池田市') || text.includes('豊中市') || text.includes('守口市') || text.includes('羽曳野市') || text.includes('大東市') || text.includes('泉佐野市') || text.includes('河内長野市')) return '大阪府';
+      if (text.includes('兵庫') || text.includes('神戸市') || text.includes('西宮市') || text.includes('尼崎市') || text.includes('宝塚市') || text.includes('姫路市') || text.includes('伊丹市') || text.includes('三田市') || text.includes('加東市') || text.includes('丹波市') || text.includes('丹波篠山市')) return '兵庫県';
+      if (text.includes('京都') || text.includes('宇治市') || text.includes('城陽市') || text.includes('福知山市')) return '京都府';
+      if (text.includes('和歌山') || text.includes('紀の川市') || text.includes('東牟婁郡') || text.includes('有田郡')) return '和歌山県';
 
       return 'その他';
     }
 
-    // 住所から「都道府県＋市区町村」を自動抽出（フォーム用）
+    // ★住所から「都道府県＋市区町村＋(キタ・ミナミ等の詳細)」を自動判定
     function extractAreaFromAddress(address) {
       if (!address) return '';
+      
+      // 大阪市内の詳細判定
+      if (address.includes('大阪府大阪市') || address.includes('大阪市')) {
+        let prefix = address.includes('大阪府') ? '大阪府大阪市' : '大阪市';
+        
+        if (address.includes('北区') || address.includes('福島区')) return `${prefix}(キタ・福島)`;
+        if (address.includes('中央区')) {
+          if (address.match(/難波|心斎橋|道頓堀|千日前|日本橋|宗右衛門町|谷町|南船場|東心斎橋|西心斎橋/)) {
+            return `${prefix}(ミナミ周辺)`;
+          }
+          if (address.match(/本町|北浜|淀屋橋|平野町|淡路町|瓦町|備後町|安土町|高麗橋|伏見町|道修町|今橋/)) {
+            return `${prefix}(本町・淀屋橋)`;
+          }
+          return `${prefix}(中央区・その他)`;
+        }
+        if (address.includes('浪速区')) return `${prefix}(ミナミ周辺)`;
+        if (address.includes('天王寺区') || address.includes('阿倍野区')) return `${prefix}(天王寺・阿倍野)`;
+        if (address.includes('淀川区')) return `${prefix}(新大阪・十三)`;
+        if (address.includes('都島区') || address.includes('城東区')) return `${prefix}(京橋・OBP)`;
+        if (address.includes('西区')) return `${prefix}(西区・新町・堀江)`;
+        if (address.includes('大正区') || address.includes('港区') || address.includes('此花区') || address.includes('住之江区')) return `${prefix}(ベイエリア)`;
+        
+        // 上記以外の区（東成区など）
+        const wardMatch = address.match(/大阪市(.+?区)/);
+        if (wardMatch) return `${prefix}(${wardMatch[1]})`;
+        
+        return prefix;
+      }
+
+      // 大阪市以外は通常の市区町村抽出
       const match = address.match(/^(.{2,3}?[都道府県])?(.+?[市区町村])/);
       if (match) {
-        return (match[1] || '') + match[2]; // 例: 大阪府 + 大阪市
+        return (match[1] || '') + match[2]; 
       }
       const spaceIndex = address.search(/[\s　]/);
       return spaceIndex > -1 ? address.substring(0, spaceIndex) : address;
@@ -364,7 +401,10 @@
 
     // 住所入力時に自動でエリアをセットするイベント
     document.getElementById('form-address').addEventListener('input', (e) => {
-      document.getElementById('form-area').value = extractAreaFromAddress(e.target.value);
+      // フォーム内では都道府県をカットした状態で表示させる
+      let autoArea = extractAreaFromAddress(e.target.value);
+      autoArea = autoArea.replace(/^(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/, '');
+      document.getElementById('form-area').value = autoArea;
     });
 
     // 満足度の星を光らせる処理（色分け付き）
@@ -751,6 +791,7 @@
             const scenesStr = row[8] || '';
             const scenes = scenesStr ? scenesStr.split('|') : [];
 
+            // CSVのデータを読み込んでFirestoreに保存するデータを作る
             const payload = {
               id: id,
               name: row[1] || '',
