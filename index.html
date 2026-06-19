@@ -19,7 +19,14 @@
     <div class="flex items-center gap-4 bg-gray-100 p-1.5 rounded-lg border">
       <span id="current-role-badge" class="text-sm font-bold px-3 py-1.5 rounded-md bg-gray-200 text-gray-600">閲覧モード</span>
       
-      <!-- 管理者専用の隠しメニュー（データ出力用） -->
+      <!-- 管理者専用の隠しメニュー（データ読込・出力用） -->
+      <div id="btn-import-container" class="hidden relative">
+        <input type="file" id="csv-file-input" accept=".csv" class="hidden">
+        <label for="csv-file-input" id="btn-import-label" class="cursor-pointer px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-blue-500 text-white shadow hover:bg-blue-600 flex items-center gap-1">
+          <i data-lucide="upload" class="w-4 h-4"></i>CSV読込
+        </label>
+      </div>
+
       <button id="btn-export-csv" class="hidden px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-green-500 text-white shadow hover:bg-green-600">
         <i data-lucide="download" class="w-4 h-4 inline-block mr-1"></i>CSV出力
       </button>
@@ -292,6 +299,9 @@
     const btnLogout = document.getElementById('btn-logout');
     const addBtnContainer = document.getElementById('add-btn-container');
     const btnExportCsv = document.getElementById('btn-export-csv');
+    const btnImportContainer = document.getElementById('btn-import-container');
+    const fileInput = document.getElementById('csv-file-input');
+    const importLabel = document.getElementById('btn-import-label');
 
     // --- Authentication & Data Fetching ---
     const initAuth = async () => {
@@ -411,6 +421,7 @@
         btnLogout.classList.remove('hidden');
         addBtnContainer.classList.remove('hidden');
         btnExportCsv.classList.remove('hidden');
+        btnImportContainer.classList.remove('hidden'); // 管理者のみインポート可
       } else if (currentRole === 'editor') {
         roleBadge.textContent = '編集者モード';
         roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 border border-blue-200';
@@ -418,6 +429,7 @@
         btnLogout.classList.remove('hidden');
         addBtnContainer.classList.remove('hidden');
         btnExportCsv.classList.add('hidden');
+        btnImportContainer.classList.add('hidden');
       } else {
         roleBadge.textContent = '閲覧モード';
         roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-gray-200 text-gray-600';
@@ -425,6 +437,7 @@
         btnLogout.classList.add('hidden');
         addBtnContainer.classList.add('hidden');
         btnExportCsv.classList.add('hidden');
+        btnImportContainer.classList.add('hidden');
       }
     }
 
@@ -599,6 +612,51 @@
       });
     }
 
+    // --- CSV Parser (インポート用) ---
+    function parseCSV(text) {
+      const result = [];
+      let row = [];
+      let inQuotes = false;
+      let currentVal = '';
+      for (let i = 0; i < text.length; i++) {
+        const char = text[i];
+        if (inQuotes) {
+          if (char === '"') {
+            if (i + 1 < text.length && text[i + 1] === '"') {
+              currentVal += '"'; // エスケープされたダブルクォート
+              i++;
+            } else {
+              inQuotes = false;
+            }
+          } else {
+            currentVal += char;
+          }
+        } else {
+          if (char === '"') {
+            inQuotes = true;
+          } else if (char === ',') {
+            row.push(currentVal);
+            currentVal = '';
+          } else if (char === '\n' || char === '\r') {
+            row.push(currentVal);
+            currentVal = '';
+            result.push(row);
+            row = [];
+            if (char === '\r' && i + 1 < text.length && text[i + 1] === '\n') {
+              i++; // Windowsの改行(CRLF)対応
+            }
+          } else {
+            currentVal += char;
+          }
+        }
+      }
+      if (currentVal || row.length > 0) {
+        row.push(currentVal);
+        result.push(row);
+      }
+      return result;
+    }
+
     // --- Event Listeners ---
     
     // Login System
@@ -669,6 +727,69 @@
       updateUIByRole();
       renderList();
       updateMap();
+    });
+
+    // CSVインポート機能
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      importLabel.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i>読込中...';
+      lucide.createIcons();
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const text = event.target.result;
+        const rows = parseCSV(text);
+
+        // 1行目(ヘッダー)をスキップし、空行を除外
+        const dataRows = rows.slice(1).filter(r => r.length > 0 && r[0].trim() !== '');
+
+        try {
+          const promises = dataRows.map(row => {
+            const id = row[0];
+            const scenesStr = row[8] || '';
+            const scenes = scenesStr ? scenesStr.split('|') : [];
+
+            const payload = {
+              id: id,
+              name: row[1] || '',
+              genre: row[2] || '',
+              area: row[3] || '',
+              address: row[4] || '',
+              url: row[5] || '',
+              taste: row[6] || '0',
+              features: row[7] || '',
+              scenes: scenes,
+              updatedAt: new Date().toISOString()
+            };
+            return setDoc(doc(db, 'restaurants', id), payload, { merge: true });
+          });
+
+          await Promise.all(promises);
+
+          // 成功表示
+          importLabel.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>完了!';
+          importLabel.classList.replace('bg-blue-500', 'bg-green-500');
+          importLabel.classList.replace('hover:bg-blue-600', 'hover:bg-green-600');
+          lucide.createIcons();
+          
+          setTimeout(() => {
+            importLabel.innerHTML = '<i data-lucide="upload" class="w-4 h-4"></i>CSV読込';
+            importLabel.classList.replace('bg-green-500', 'bg-blue-500');
+            importLabel.classList.replace('hover:bg-green-600', 'hover:bg-blue-600');
+            lucide.createIcons();
+          }, 3000);
+
+        } catch (err) {
+          console.error(err);
+          importLabel.innerHTML = '<i data-lucide="x" class="w-4 h-4"></i>エラー';
+          importLabel.classList.replace('bg-blue-500', 'bg-red-500');
+          lucide.createIcons();
+        }
+        fileInput.value = ''; // 選択状態をリセット
+      };
+      reader.readAsText(file);
     });
 
     // CSVエクスポート機能
