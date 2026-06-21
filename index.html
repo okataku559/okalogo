@@ -16,19 +16,24 @@
       <i data-lucide="utensils" class="text-orange-500 w-7 h-7"></i>
       <h1 class="text-2xl font-bold text-gray-800 tracking-tight">おかログ</h1>
     </div>
-    <div class="flex items-center gap-4 bg-gray-100 p-1.5 rounded-lg border">
-      <span id="current-role-badge" class="text-sm font-bold px-3 py-1.5 rounded-md bg-gray-200 text-gray-600">閲覧モード</span>
+    <div class="flex flex-wrap items-center gap-2 sm:gap-3 bg-gray-100 p-1.5 rounded-lg border">
+      <span id="current-role-badge" class="text-sm font-bold px-3 py-1.5 rounded-md bg-gray-200 text-gray-600 whitespace-nowrap">閲覧モード</span>
       
+      <!-- ★「お店を追加」ボタンを検索と間違えないようヘッダーに移動 -->
+      <button id="btn-add" class="hidden px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-gray-800 text-white shadow hover:bg-gray-900 flex items-center gap-1">
+        <i data-lucide="plus" class="w-4 h-4"></i>追加
+      </button>
+
       <!-- 管理者専用の隠しメニュー（データ読込・出力用） -->
       <div id="btn-import-container" class="hidden relative">
         <input type="file" id="csv-file-input" accept=".csv" class="hidden">
         <label for="csv-file-input" id="btn-import-label" class="cursor-pointer px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-blue-500 text-white shadow hover:bg-blue-600 flex items-center gap-1">
-          <i data-lucide="upload" class="w-4 h-4"></i>CSV読込
+          <i data-lucide="upload" class="w-4 h-4"></i>読込
         </label>
       </div>
 
-      <button id="btn-export-csv" class="hidden px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-green-500 text-white shadow hover:bg-green-600">
-        <i data-lucide="download" class="w-4 h-4 inline-block mr-1"></i>CSV出力
+      <button id="btn-export-csv" class="hidden px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-green-500 text-white shadow hover:bg-green-600 flex items-center gap-1">
+        <i data-lucide="download" class="w-4 h-4"></i>出力
       </button>
 
       <button id="btn-login-modal" class="px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-orange-500 text-white shadow hover:bg-orange-600">
@@ -48,30 +53,31 @@
       
       <!-- Controls -->
       <div class="bg-white p-4 rounded-xl shadow-sm border flex flex-col gap-3">
-        <div class="flex flex-col sm:flex-row gap-3">
-          <div class="flex-1">
+        <!-- ★検索ボタンを明示的に追加 -->
+        <div class="flex flex-col sm:flex-row gap-3 items-end">
+          <div class="flex-1 w-full">
             <label class="block text-xs font-semibold text-gray-500 mb-1">都道府県</label>
             <select id="filter-pref" class="w-full border-gray-300 rounded-lg shadow-sm p-2 bg-gray-50 focus:ring-orange-500 focus:border-orange-500 outline-none border">
               <option value="">すべての都道府県</option>
             </select>
           </div>
-          <div class="flex-1">
+          <div class="flex-1 w-full">
             <label class="block text-xs font-semibold text-gray-500 mb-1">エリア</label>
             <select id="filter-area" class="w-full border-gray-300 rounded-lg shadow-sm p-2 bg-gray-50 focus:ring-orange-500 focus:border-orange-500 outline-none border">
               <option value="">すべてのエリア</option>
             </select>
           </div>
-          <div class="flex-1">
+          <div class="flex-1 w-full">
             <label class="block text-xs font-semibold text-gray-500 mb-1">ジャンル</label>
             <select id="filter-genre" class="w-full border-gray-300 rounded-lg shadow-sm p-2 bg-gray-50 focus:ring-orange-500 focus:border-orange-500 outline-none border">
               <option value="">すべてのジャンル</option>
             </select>
           </div>
-        </div>
-        <div class="flex justify-end hidden" id="add-btn-container">
-          <button id="btn-add" class="w-full sm:w-auto bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors">
-            <i data-lucide="plus" class="w-5 h-5"></i> お店を追加
-          </button>
+          <div class="w-full sm:w-auto mt-2 sm:mt-0">
+            <button id="btn-search" class="w-full sm:w-auto bg-orange-500 hover:bg-orange-600 text-white px-6 py-2 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors h-[42px]">
+              <i data-lucide="search" class="w-5 h-5"></i> 検索
+            </button>
+          </div>
         </div>
       </div>
 
@@ -133,7 +139,6 @@
           ログイン
         </button>
         <hr class="my-2 border-gray-200">
-        <!-- 暗号化されたメールリンク -->
         <a href="#" id="btn-request-mail" class="text-center text-sm text-blue-600 hover:underline flex items-center justify-center gap-1">
           <i data-lucide="mail" class="w-4 h-4"></i> 管理者に合言葉をリクエストする
         </a>
@@ -189,7 +194,6 @@
             </div>
             <div class="flex-1">
               <label class="block text-sm font-medium text-gray-700 mb-1">エリア (自動反映)</label>
-              <!-- エリアは住所から自動反映されるためreadonly -->
               <input type="text" id="form-area" readonly class="w-full border-gray-200 rounded-md shadow-sm p-2 bg-gray-100 text-gray-500 border outline-none cursor-not-allowed" placeholder="住所を入れると反映されます">
             </div>
           </div>
@@ -205,7 +209,6 @@
           </div>
 
           <div>
-            <!-- 満足度を★で選択できるように変更 -->
             <label class="block text-sm font-medium text-gray-700 mb-2">満足度</label>
             <div class="flex gap-2 items-center">
               <div id="form-taste-container" class="flex gap-1">
@@ -221,7 +224,6 @@
           </div>
 
           <div>
-            <!-- おすすめのシーン（一人で追加） -->
             <label class="block text-sm font-medium text-gray-700 mb-2">おすすめのシーン（複数選択可）</label>
             <div class="flex flex-wrap gap-3">
               <label class="flex items-center gap-2 cursor-pointer bg-white border border-gray-300 px-3 py-2 rounded-md hover:bg-orange-50 transition-colors"><input type="checkbox" value="一人で" class="scene-cb w-4 h-4 text-orange-500 rounded border-gray-300 focus:ring-orange-500"> <span class="text-sm font-medium text-gray-700">一人で</span></label>
@@ -297,11 +299,29 @@
     const roleBadge = document.getElementById('current-role-badge');
     const btnLoginModal = document.getElementById('btn-login-modal');
     const btnLogout = document.getElementById('btn-logout');
-    const addBtnContainer = document.getElementById('add-btn-container');
+    const btnAdd = document.getElementById('btn-add'); // ヘッダーに移動した追加ボタン
     const btnExportCsv = document.getElementById('btn-export-csv');
     const btnImportContainer = document.getElementById('btn-import-container');
     const fileInput = document.getElementById('csv-file-input');
     const importLabel = document.getElementById('btn-import-label');
+
+    // ★ブラウザバック対策：検索状態を記憶・復元する仕組み
+    function saveState() {
+      const state = { pref: selectedPref, area: selectedArea, genre: selectedGenre, activeId: activeRestaurantId };
+      sessionStorage.setItem('okalogo_state', JSON.stringify(state));
+    }
+    function loadState() {
+      const saved = sessionStorage.getItem('okalogo_state');
+      if (saved) {
+        try {
+          const state = JSON.parse(saved);
+          selectedPref = state.pref || '';
+          selectedArea = state.area || '';
+          selectedGenre = state.genre || '';
+          activeRestaurantId = state.activeId || null;
+        } catch(e) {}
+      }
+    }
 
     // --- Authentication & Data Fetching ---
     const initAuth = async () => {
@@ -321,22 +341,31 @@
         if (!snapshot.empty) {
           restaurants = snapshot.docs.map(doc => {
             const data = doc.data();
-            
-            // ★住所からエリアを自動判定・細分化する（キタ、ミナミなど）
             let cleanArea = '';
             if (data.address) {
               cleanArea = extractAreaFromAddress(data.address);
             } else {
               cleanArea = data.area || '';
             }
-            // 都道府県名をカットしてスッキリさせる
             cleanArea = cleanArea.replace(/^(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/, '');
-            
             return { id: doc.id, pref: extractPrefecture(data.address || data.area), normalizedArea: cleanArea, ...data };
           });
+
+          // 初期ロード時に一度だけ記憶を復元
+          if (!window.isStateLoaded) {
+            loadState();
+            window.isStateLoaded = true;
+            window.isStateLoadedFirstTime = true; // スクロール用フラグ
+            
+            // プルダウンの見た目を復元
+            filterPrefEl.value = selectedPref;
+            // AreaとGenreはupdateFiltersOptions内でセットされる
+          }
+          
           updateFiltersOptions();
           updateUIByRole();
           renderList();
+          updateMap();
         }
       }, (error) => {
         console.error("Firestore Error:", error);
@@ -344,36 +373,25 @@
     });
 
     // --- Core Functions ---
-    // 住所またはエリアから「都道府県」を抽出
     function extractPrefecture(text) {
       if (!text) return '';
       const match = text.match(/(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/);
       if (match) return match[0];
-      
       if (text.includes('大阪') || text.includes('堺市') || text.includes('池田市') || text.includes('豊中市') || text.includes('守口市') || text.includes('羽曳野市') || text.includes('大東市') || text.includes('泉佐野市') || text.includes('河内長野市')) return '大阪府';
       if (text.includes('兵庫') || text.includes('神戸市') || text.includes('西宮市') || text.includes('尼崎市') || text.includes('宝塚市') || text.includes('姫路市') || text.includes('伊丹市') || text.includes('三田市') || text.includes('加東市') || text.includes('丹波市') || text.includes('丹波篠山市')) return '兵庫県';
       if (text.includes('京都') || text.includes('宇治市') || text.includes('城陽市') || text.includes('福知山市')) return '京都府';
       if (text.includes('和歌山') || text.includes('紀の川市') || text.includes('東牟婁郡') || text.includes('有田郡')) return '和歌山県';
-
       return 'その他';
     }
 
-    // ★住所から「都道府県＋市区町村＋(キタ・ミナミ等の詳細)」を自動判定
     function extractAreaFromAddress(address) {
       if (!address) return '';
-      
-      // 大阪市内の詳細判定
       if (address.includes('大阪府大阪市') || address.includes('大阪市')) {
         let prefix = address.includes('大阪府') ? '大阪府大阪市' : '大阪市';
-        
         if (address.includes('北区') || address.includes('福島区')) return `${prefix}(キタ・福島)`;
         if (address.includes('中央区')) {
-          if (address.match(/難波|心斎橋|道頓堀|千日前|日本橋|宗右衛門町|谷町|南船場|東心斎橋|西心斎橋/)) {
-            return `${prefix}(ミナミ周辺)`;
-          }
-          if (address.match(/本町|北浜|淀屋橋|平野町|淡路町|瓦町|備後町|安土町|高麗橋|伏見町|道修町|今橋/)) {
-            return `${prefix}(本町・淀屋橋)`;
-          }
+          if (address.match(/難波|心斎橋|道頓堀|千日前|日本橋|宗右衛門町|谷町|南船場|東心斎橋|西心斎橋/)) return `${prefix}(ミナミ周辺)`;
+          if (address.match(/本町|北浜|淀屋橋|平野町|淡路町|瓦町|備後町|安土町|高麗橋|伏見町|道修町|今橋/)) return `${prefix}(本町・淀屋橋)`;
           return `${prefix}(中央区・その他)`;
         }
         if (address.includes('浪速区')) return `${prefix}(ミナミ周辺)`;
@@ -382,32 +400,22 @@
         if (address.includes('都島区') || address.includes('城東区')) return `${prefix}(京橋・OBP)`;
         if (address.includes('西区')) return `${prefix}(西区・新町・堀江)`;
         if (address.includes('大正区') || address.includes('港区') || address.includes('此花区') || address.includes('住之江区')) return `${prefix}(ベイエリア)`;
-        
-        // 上記以外の区（東成区など）
         const wardMatch = address.match(/大阪市(.+?区)/);
         if (wardMatch) return `${prefix}(${wardMatch[1]})`;
-        
         return prefix;
       }
-
-      // 大阪市以外は通常の市区町村抽出
       const match = address.match(/^(.{2,3}?[都道府県])?(.+?[市区町村])/);
-      if (match) {
-        return (match[1] || '') + match[2]; 
-      }
+      if (match) return (match[1] || '') + match[2]; 
       const spaceIndex = address.search(/[\s　]/);
       return spaceIndex > -1 ? address.substring(0, spaceIndex) : address;
     }
 
-    // 住所入力時に自動でエリアをセットするイベント
     document.getElementById('form-address').addEventListener('input', (e) => {
-      // フォーム内では都道府県をカットした状態で表示させる
       let autoArea = extractAreaFromAddress(e.target.value);
       autoArea = autoArea.replace(/^(北海道|東京都|(?:京都|大阪)府|.{2,3}県)/, '');
       document.getElementById('form-area').value = autoArea;
     });
 
-    // 満足度の星を光らせる処理（色分け付き）
     const tasteStars = document.querySelectorAll('.taste-star');
     const tasteInput = document.getElementById('form-taste');
     const tasteLabel = document.getElementById('taste-label');
@@ -415,67 +423,65 @@
     function updateStars(val) {
       tasteInput.value = val;
       tasteLabel.textContent = val > 0 ? `星 ${val}` : '未評価';
-      
-      // 星の数に応じた色を設定（1:青, 2:緑, 3:黄, 4:オレンジ, 5:赤）
       const colors = ['text-gray-300', 'text-blue-500', 'text-green-500', 'text-yellow-500', 'text-orange-500', 'text-red-500'];
       const activeColor = colors[val] || 'text-gray-300';
-
       tasteStars.forEach(star => {
         const starVal = parseInt(star.dataset.val);
         star.classList.remove('text-gray-300', 'text-blue-500', 'text-green-500', 'text-yellow-500', 'text-orange-500', 'text-red-500');
-        
-        if (starVal <= val) {
-          star.classList.add(activeColor);
-        } else {
-          star.classList.add('text-gray-300');
-        }
+        if (starVal <= val) star.classList.add(activeColor);
+        else star.classList.add('text-gray-300');
       });
     }
 
     tasteStars.forEach(star => {
-      star.addEventListener('click', (e) => {
-        updateStars(parseInt(e.currentTarget.dataset.val));
-      });
+      star.addEventListener('click', (e) => { updateStars(parseInt(e.currentTarget.dataset.val)); });
     });
 
     function updateFiltersOptions() {
       const prefs = [...new Set(restaurants.map(r => r.pref).filter(Boolean))].sort();
+      
+      // ★エリアの選択肢は「今表示されている都道府県」を元に絞る
+      const currentPrefUI = filterPrefEl.value; 
       let filteredForArea = restaurants;
-      if (selectedPref) {
-        filteredForArea = restaurants.filter(r => r.pref === selectedPref);
+      if (currentPrefUI) {
+        filteredForArea = restaurants.filter(r => r.pref === currentPrefUI);
       }
-      // 表記ゆれをなくした normalizedArea で選択肢を作成
+      
       const areas = [...new Set(filteredForArea.map(r => r.normalizedArea).filter(Boolean))].sort();
       const genres = [...new Set(restaurants.map(r => r.genre).filter(Boolean))].sort();
       
-      filterPrefEl.innerHTML = '<option value="">すべての都道府県</option>' + prefs.map(p => `<option value="${p}" ${p === selectedPref ? 'selected' : ''}>${p}</option>`).join('');
-      filterAreaEl.innerHTML = '<option value="">すべてのエリア</option>' + areas.map(a => `<option value="${a}" ${a === selectedArea ? 'selected' : ''}>${a}</option>`).join('');
-      filterGenreEl.innerHTML = '<option value="">すべてのジャンル</option>' + genres.map(g => `<option value="${g}" ${g === selectedGenre ? 'selected' : ''}>${g}</option>`).join('');
+      // ★ブラウザバック等で復元された値を保持する
+      const areaToSelect = window.isStateLoadedFirstTime ? selectedArea : filterAreaEl.value;
+      const genreToSelect = window.isStateLoadedFirstTime ? selectedGenre : filterGenreEl.value;
+
+      filterPrefEl.innerHTML = '<option value="">すべての都道府県</option>' + prefs.map(p => `<option value="${p}" ${p === currentPrefUI ? 'selected' : ''}>${p}</option>`).join('');
+      filterAreaEl.innerHTML = '<option value="">すべてのエリア</option>' + areas.map(a => `<option value="${a}" ${a === areaToSelect ? 'selected' : ''}>${a}</option>`).join('');
+      filterGenreEl.innerHTML = '<option value="">すべてのジャンル</option>' + genres.map(g => `<option value="${g}" ${g === genreToSelect ? 'selected' : ''}>${g}</option>`).join('');
     }
 
     function updateUIByRole() {
       if (currentRole === 'admin') {
         roleBadge.textContent = '管理者モード';
-        roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-red-100 text-red-700 border border-red-200';
+        roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-red-100 text-red-700 border border-red-200 whitespace-nowrap';
         btnLoginModal.classList.add('hidden');
         btnLogout.classList.remove('hidden');
-        addBtnContainer.classList.remove('hidden');
+        btnAdd.classList.remove('hidden');
         btnExportCsv.classList.remove('hidden');
-        btnImportContainer.classList.remove('hidden'); // 管理者のみインポート可
+        btnImportContainer.classList.remove('hidden');
       } else if (currentRole === 'editor') {
         roleBadge.textContent = '編集者モード';
-        roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 border border-blue-200';
+        roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap';
         btnLoginModal.classList.add('hidden');
         btnLogout.classList.remove('hidden');
-        addBtnContainer.classList.remove('hidden');
+        btnAdd.classList.remove('hidden');
         btnExportCsv.classList.add('hidden');
         btnImportContainer.classList.add('hidden');
       } else {
         roleBadge.textContent = '閲覧モード';
-        roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-gray-200 text-gray-600';
+        roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-gray-200 text-gray-600 whitespace-nowrap';
         btnLoginModal.classList.remove('hidden');
         btnLogout.classList.add('hidden');
-        addBtnContainer.classList.add('hidden');
+        btnAdd.classList.add('hidden');
         btnExportCsv.classList.add('hidden');
         btnImportContainer.classList.add('hidden');
       }
@@ -484,7 +490,7 @@
     function renderList() {
       const filtered = restaurants.filter(r => {
         const matchPref = selectedPref ? r.pref === selectedPref : true;
-        const matchArea = selectedArea ? r.normalizedArea === selectedArea : true; // normalizedAreaで判定
+        const matchArea = selectedArea ? r.normalizedArea === selectedArea : true; 
         const matchGenre = selectedGenre ? r.genre === selectedGenre : true;
         return matchPref && matchArea && matchGenre;
       });
@@ -529,12 +535,10 @@
 
           let deleteBadge = r.deleteRequested && currentRole === 'admin' ? `<span class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full font-bold flex items-center gap-1 border border-red-200"><i data-lucide="alert-circle" class="w-3 h-3"></i> 削除依頼あり</span>` : '';
 
-          // 満足度を星アイコンと色で表示
           let starsHtml = '';
           const tasteNum = parseInt(r.taste);
           if (tasteNum > 0 && tasteNum <= 5) {
-            let colorClass = '';
-            let bgClass = '';
+            let colorClass = ''; let bgClass = '';
             if (tasteNum === 1) { colorClass = 'text-blue-500 fill-blue-500'; bgClass = 'bg-blue-50 text-blue-800 border-blue-200'; }
             else if (tasteNum === 2) { colorClass = 'text-green-500 fill-green-500'; bgClass = 'bg-green-50 text-green-800 border-green-200'; }
             else if (tasteNum === 3) { colorClass = 'text-yellow-500 fill-yellow-500'; bgClass = 'bg-yellow-50 text-yellow-800 border-yellow-200'; }
@@ -548,7 +552,6 @@
              starsHtml = `<span class="bg-gray-100 text-gray-800 text-xs px-2 py-1 rounded-md border border-gray-200 font-medium flex items-center gap-1">満足度: ${r.taste}</span>`;
           }
 
-          // おすすめシーンをタグで表示
           let scenesHtml = '';
           if (r.scenes && r.scenes.length > 0) {
             scenesHtml = `<div class="flex flex-wrap gap-1 mt-2">`;
@@ -558,7 +561,6 @@
             scenesHtml += `</div>`;
           }
 
-          // URLリンクとGoogle Mapリンクを店名の横に配置
           let urlLinkHtml = r.url ? `<a href="${r.url}" target="_blank" onclick="event.stopPropagation()" class="text-blue-600 hover:text-blue-800 text-xs font-medium flex items-center gap-1 bg-blue-50 px-2 py-1 rounded border border-blue-200 shadow-sm transition-colors"><i data-lucide="external-link" class="w-3 h-3"></i> 公式等</a>` : '';
           let mapLinkHtml = r.address ? `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.address)}" target="_blank" onclick="event.stopPropagation()" class="text-orange-600 hover:text-orange-800 text-xs font-medium flex items-center gap-1 bg-orange-50 px-2 py-1 rounded border border-orange-200 shadow-sm transition-colors"><i data-lucide="map-pin" class="w-3 h-3"></i> Map</a>` : '';
 
@@ -587,6 +589,17 @@
         }).join('');
       }
       lucide.createIcons();
+
+      // ★ブラウザバック時：選択していたお店まで自動スクロールして戻す
+      if (activeRestaurantId && window.isStateLoadedFirstTime) {
+        setTimeout(() => {
+           const activeEl = document.querySelector(`.restaurant-card[data-id="${activeRestaurantId}"]`);
+           if(activeEl) {
+               activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+           }
+        }, 100);
+        window.isStateLoadedFirstTime = false;
+      }
     }
 
     function updateMap() {
@@ -597,7 +610,6 @@
       mapFrame.src = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&t=&z=${zoom}&ie=UTF8&iwloc=&output=embed`;
 
       if (activeRestaurant) {
-        // リンクをリスト側に移動したため、詳細パネルはスッキリと店名と住所のみに
         mapDetails.innerHTML = `
           <div class="flex flex-col gap-1">
             <h4 class="font-bold text-gray-800 text-lg">${activeRestaurant.name}</h4>
@@ -620,11 +632,8 @@
       document.getElementById('form-address').value = data?.address || '';
       document.getElementById('form-url').value = data?.url || '';
       document.getElementById('form-features').value = data?.features || '';
-      
-      // 星の復元
       updateStars(data?.taste ? parseInt(data.taste) : 0);
 
-      // シーンの復元
       const sceneCbs = document.querySelectorAll('.scene-cb');
       const dataScenes = data?.scenes || [];
       sceneCbs.forEach(cb => {
@@ -637,7 +646,6 @@
            cb.parentElement.classList.add('bg-white', 'border-gray-300');
         }
       });
-
       modal.classList.remove('hidden');
     }
 
@@ -652,7 +660,6 @@
       });
     }
 
-    // --- CSV Parser (インポート用) ---
     function parseCSV(text) {
       const result = [];
       let row = [];
@@ -663,7 +670,7 @@
         if (inQuotes) {
           if (char === '"') {
             if (i + 1 < text.length && text[i + 1] === '"') {
-              currentVal += '"'; // エスケープされたダブルクォート
+              currentVal += '"'; 
               i++;
             } else {
               inQuotes = false;
@@ -683,7 +690,7 @@
             result.push(row);
             row = [];
             if (char === '\r' && i + 1 < text.length && text[i + 1] === '\n') {
-              i++; // Windowsの改行(CRLF)対応
+              i++; 
             }
           } else {
             currentVal += char;
@@ -698,8 +705,6 @@
     }
 
     // --- Event Listeners ---
-    
-    // Login System
     btnLoginModal.addEventListener('click', () => {
       document.getElementById('password-input').value = '';
       document.getElementById('password-input').setAttribute('type', 'password');
@@ -713,7 +718,6 @@
       loginModal.classList.add('hidden');
     });
 
-    // パスワードの表示・非表示切り替え
     const togglePasswordBtn = document.getElementById('btn-toggle-password');
     const passwordInput = document.getElementById('password-input');
     const passwordEyeIcon = document.getElementById('password-eye-icon');
@@ -721,19 +725,17 @@
     togglePasswordBtn.addEventListener('click', () => {
       const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
       passwordInput.setAttribute('type', type);
-      
       if (type === 'password') {
         passwordEyeIcon.setAttribute('data-lucide', 'eye');
       } else {
         passwordEyeIcon.setAttribute('data-lucide', 'eye-off');
       }
-      lucide.createIcons(); // アイコンを再描画
+      lucide.createIcons();
     });
 
     document.getElementById('btn-submit-login').addEventListener('click', () => {
       const pwd = document.getElementById('password-input').value;
-      const encodedPwd = btoa(pwd); // 入力されたパスワードをエンコードして比較
-      
+      const encodedPwd = btoa(pwd); 
       if (encodedPwd === KEY_A) {
         currentRole = 'admin';
         localStorage.setItem('okalogo_role', 'admin');
@@ -751,7 +753,6 @@
       }
     });
 
-    // メールリクエストボタンの処理 (メアドをソースに直接書かないスパム対策)
     document.getElementById('btn-request-mail').addEventListener('click', (e) => {
       e.preventDefault();
       const m = atob('dGFrdXlhLm9rYXphd2FAZ21haWwuY29t');
@@ -764,12 +765,12 @@
       currentRole = 'viewer';
       localStorage.removeItem('okalogo_role');
       activeRestaurantId = null;
+      saveState(); // ログアウト時も状態保存
       updateUIByRole();
       renderList();
       updateMap();
     });
 
-    // CSVインポート機能
     fileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
       if (!file) return;
@@ -781,8 +782,6 @@
       reader.onload = async (event) => {
         const text = event.target.result;
         const rows = parseCSV(text);
-
-        // 1行目(ヘッダー)をスキップし、空行を除外
         const dataRows = rows.slice(1).filter(r => r.length > 0 && r[0].trim() !== '');
 
         try {
@@ -790,8 +789,6 @@
             const id = row[0];
             const scenesStr = row[8] || '';
             const scenes = scenesStr ? scenesStr.split('|') : [];
-
-            // CSVのデータを読み込んでFirestoreに保存するデータを作る
             const payload = {
               id: id,
               name: row[1] || '',
@@ -809,14 +806,13 @@
 
           await Promise.all(promises);
 
-          // 成功表示
           importLabel.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>完了!';
           importLabel.classList.replace('bg-blue-500', 'bg-green-500');
           importLabel.classList.replace('hover:bg-blue-600', 'hover:bg-green-600');
           lucide.createIcons();
           
           setTimeout(() => {
-            importLabel.innerHTML = '<i data-lucide="upload" class="w-4 h-4"></i>CSV読込';
+            importLabel.innerHTML = '<i data-lucide="upload" class="w-4 h-4"></i>読込';
             importLabel.classList.replace('bg-green-500', 'bg-blue-500');
             importLabel.classList.replace('hover:bg-green-600', 'hover:bg-blue-600');
             lucide.createIcons();
@@ -828,19 +824,14 @@
           importLabel.classList.replace('bg-blue-500', 'bg-red-500');
           lucide.createIcons();
         }
-        fileInput.value = ''; // 選択状態をリセット
+        fileInput.value = ''; 
       };
       reader.readAsText(file);
     });
 
-    // CSVエクスポート機能
     btnExportCsv.addEventListener('click', () => {
       if (restaurants.length === 0) return alert('出力するデータがありません。');
-      
-      // CSVのヘッダー
       const headers = ['id', 'name', 'genre', 'area', 'address', 'url', 'taste', 'features', 'scenes'];
-      
-      // データをCSV形式の文字列に変換
       const csvRows = [];
       csvRows.push(headers.join(','));
       
@@ -859,7 +850,6 @@
         csvRows.push(row.join(','));
       });
       
-      // BOM付きでダウンロード
       const csvContent = "\uFEFF" + csvRows.join('\n');
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
@@ -871,7 +861,6 @@
       document.body.removeChild(link);
     });
 
-    // HOMEボタン (ロゴクリックで初期状態に戻る)
     document.getElementById('btn-home').addEventListener('click', () => {
       selectedPref = '';
       selectedArea = '';
@@ -882,28 +871,34 @@
       filterAreaEl.value = '';
       filterGenreEl.value = '';
       
+      saveState(); // 初期化状態を保存
       updateFiltersOptions();
       renderList();
       updateMap();
     });
 
-    // Filters & Add Button
-    filterPrefEl.addEventListener('change', (e) => { 
-      selectedPref = e.target.value; 
-      selectedArea = ''; 
-      activeRestaurantId = null; 
+    // ★都道府県を選んだ時だけ、エリアの選択肢を更新する（まだ検索はされない）
+    filterPrefEl.addEventListener('change', () => { 
+      filterAreaEl.value = '';
       updateFiltersOptions(); 
-      renderList(); 
-      updateMap(); 
     });
-    filterAreaEl.addEventListener('change', (e) => { selectedArea = e.target.value; activeRestaurantId = null; renderList(); updateMap(); });
-    filterGenreEl.addEventListener('change', (e) => { selectedGenre = e.target.value; activeRestaurantId = null; renderList(); updateMap(); });
     
-    document.getElementById('btn-add').addEventListener('click', () => openModal());
+    // ★「検索」ボタンを押した時に、選んだ条件を適用してリストを更新する
+    document.getElementById('btn-search').addEventListener('click', () => {
+      selectedPref = filterPrefEl.value;
+      selectedArea = filterAreaEl.value;
+      selectedGenre = filterGenreEl.value;
+      activeRestaurantId = null; // 検索時は選択状態をリセット
+      
+      saveState(); // 検索条件を記憶
+      renderList();
+      updateMap();
+    });
+    
+    btnAdd.addEventListener('click', () => openModal());
     document.getElementById('btn-close-modal').addEventListener('click', closeModal);
     document.getElementById('btn-cancel').addEventListener('click', closeModal);
 
-    // シーンのチェックボックスの見た目変更
     document.querySelectorAll('.scene-cb').forEach(cb => {
       cb.addEventListener('change', (e) => {
         if(e.target.checked) {
@@ -916,7 +911,6 @@
       });
     });
 
-    // List Click Delegation
     listEl.addEventListener('click', async (e) => {
       const card = e.target.closest('.restaurant-card');
       if (!card) return;
@@ -930,7 +924,7 @@
         e.stopPropagation();
         if(confirm('本当に削除しますか？')) {
           await deleteDoc(doc(db, 'restaurants', id));
-          if(activeRestaurantId === id) { activeRestaurantId = null; updateMap(); }
+          if(activeRestaurantId === id) { activeRestaurantId = null; updateMap(); saveState(); }
         }
       } else if (e.target.closest('.btn-request-delete')) {
         e.stopPropagation();
@@ -942,12 +936,17 @@
         await updateDoc(doc(db, 'restaurants', id), { deleteRequested: false });
       } else {
         activeRestaurantId = id;
+        saveState(); // 選んだお店を記憶
         renderList();
         updateMap();
+        
+        // スマホなどの小さい画面では、リストを選ぶと地図まで自動スクロール
+        if(window.innerWidth < 1024) {
+          document.getElementById('map-frame').parentElement.scrollIntoView({ behavior: 'smooth' });
+        }
       }
     });
 
-    // Form Submit
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       
