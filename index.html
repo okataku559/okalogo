@@ -119,14 +119,21 @@
   <div id="login-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
     <div class="bg-white rounded-xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col">
       <div class="px-6 py-4 border-b flex justify-between items-center bg-gray-50">
-        <h2 class="font-bold text-lg text-gray-800">権限の切り替え</h2>
+        <!-- ★タイトルを変更 -->
+        <h2 class="font-bold text-lg text-gray-800">お店を追加・編集するには</h2>
         <button id="btn-close-login" class="text-gray-500 hover:bg-gray-200 p-1 rounded-full transition-colors">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
       <div class="p-6 flex flex-col gap-4">
+        <!-- ★大歓迎のメッセージを追加 -->
+        <div class="bg-orange-50 p-3 rounded-md border border-orange-100">
+          <p class="text-sm text-orange-800 font-medium leading-relaxed">
+            美味しいお店をいっぱい知っていて「リストに追加してもいいよ！」という方、大歓迎です！🍽️✨
+          </p>
+        </div>
         <p class="text-sm text-gray-600">
-          お店の追加や編集を行うには、管理者から教えられた「合言葉」を入力してください。
+          お店を追加・編集するには「合言葉」が必要です。合言葉を知っている方は下に入力してください。
         </p>
         <div class="relative">
           <input type="password" id="password-input" class="w-full border-gray-300 rounded-md shadow-sm p-2 pr-10 bg-gray-50 focus:ring-2 focus:ring-orange-500 border outline-none" placeholder="合言葉を入力">
@@ -137,12 +144,16 @@
           <p id="login-error" class="text-red-500 text-xs mt-1 hidden">合言葉が間違っています。</p>
         </div>
         <button id="btn-submit-login" class="w-full bg-orange-500 text-white font-bold py-2 rounded-md hover:bg-orange-600 transition-colors">
-          ログイン
+          合言葉でログイン
         </button>
         <hr class="my-2 border-gray-200">
-        <a href="#" id="btn-request-mail" class="text-center text-sm text-blue-600 hover:underline flex items-center justify-center gap-1">
-          <i data-lucide="mail" class="w-4 h-4"></i> 管理者に合言葉をリクエストする
-        </a>
+        <!-- ★メールリンクをボタン風にして目立たせる -->
+        <div class="text-center">
+          <p class="text-xs text-gray-500 mb-2">＼ 合言葉を知らない方はこちら ／</p>
+          <a href="#" id="btn-request-mail" class="inline-flex items-center justify-center gap-1 text-sm font-bold text-blue-600 bg-blue-50 border border-blue-200 px-4 py-2 rounded-md hover:bg-blue-100 transition-colors w-full">
+            <i data-lucide="mail" class="w-4 h-4"></i> 管理者に合言葉をリクエスト
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -467,14 +478,18 @@
         btnLoginModal.classList.add('hidden');
         btnLogout.classList.remove('hidden');
         btnAdd.classList.remove('hidden');
+        btnAdd.innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i>お気に入り店舗の登録';
+        btnAdd.className = 'px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-gray-800 text-white shadow hover:bg-gray-900 flex items-center gap-1';
         btnExportCsv.classList.remove('hidden');
-        btnImportContainer.classList.remove('hidden');
+        btnImportContainer.classList.remove('hidden'); // 管理者のみインポート可
       } else if (currentRole === 'editor') {
         roleBadge.textContent = '編集者モード';
         roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 border border-blue-200 whitespace-nowrap';
         btnLoginModal.classList.add('hidden');
         btnLogout.classList.remove('hidden');
         btnAdd.classList.remove('hidden');
+        btnAdd.innerHTML = '<i data-lucide="plus" class="w-4 h-4"></i>お気に入り店舗の登録';
+        btnAdd.className = 'px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-gray-800 text-white shadow hover:bg-gray-900 flex items-center gap-1';
         btnExportCsv.classList.add('hidden');
         btnImportContainer.classList.add('hidden');
       } else {
@@ -482,10 +497,16 @@
         roleBadge.className = 'text-sm font-bold px-3 py-1.5 rounded-md bg-gray-200 text-gray-600 whitespace-nowrap';
         btnLoginModal.classList.remove('hidden');
         btnLogout.classList.add('hidden');
-        btnAdd.classList.add('hidden');
+        
+        // ★閲覧モードでもボタンを表示し、申請への誘導にする
+        btnAdd.classList.remove('hidden');
+        btnAdd.innerHTML = '<i data-lucide="lock" class="w-4 h-4"></i>美味しいお店を登録する';
+        btnAdd.className = 'px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-orange-100 text-orange-800 border border-orange-300 shadow-sm hover:bg-orange-200 flex items-center gap-1';
+        
         btnExportCsv.classList.add('hidden');
         btnImportContainer.classList.add('hidden');
       }
+      lucide.createIcons();
     }
 
     function renderList() {
@@ -896,7 +917,20 @@
       updateMap();
     });
     
-    btnAdd.addEventListener('click', () => openModal());
+    // ★閲覧モードの時にボタンを押したら申請画面（ログイン画面）を開くように変更
+    btnAdd.addEventListener('click', () => {
+      if (currentRole === 'viewer') {
+        document.getElementById('password-input').value = '';
+        document.getElementById('password-input').setAttribute('type', 'password');
+        document.getElementById('password-eye-icon').setAttribute('data-lucide', 'eye');
+        lucide.createIcons();
+        document.getElementById('login-error').classList.add('hidden');
+        loginModal.classList.remove('hidden');
+      } else {
+        openModal();
+      }
+    });
+
     document.getElementById('btn-close-modal').addEventListener('click', closeModal);
     document.getElementById('btn-cancel').addEventListener('click', closeModal);
 
