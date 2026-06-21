@@ -19,11 +19,6 @@
     <div class="flex flex-wrap items-center gap-2 sm:gap-3 bg-gray-100 p-1.5 rounded-lg border">
       <span id="current-role-badge" class="text-sm font-bold px-3 py-1.5 rounded-md bg-gray-200 text-gray-600 whitespace-nowrap">閲覧モード</span>
       
-      <!-- ★「お店を追加」ボタンを検索と間違えないようヘッダーに移動 -->
-      <button id="btn-add" class="hidden px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-gray-800 text-white shadow hover:bg-gray-900 flex items-center gap-1">
-        <i data-lucide="plus" class="w-4 h-4"></i>追加
-      </button>
-
       <!-- 管理者専用の隠しメニュー（データ読込・出力用） -->
       <div id="btn-import-container" class="hidden relative">
         <input type="file" id="csv-file-input" accept=".csv" class="hidden">
@@ -83,9 +78,15 @@
 
       <!-- List -->
       <div class="bg-white rounded-xl shadow-sm border overflow-hidden flex-1 flex flex-col">
-        <div class="p-4 border-b bg-gray-50/50 flex justify-between items-center">
-          <h2 class="font-bold text-gray-700">登録店舗 (<span id="list-count">0</span>件)</h2>
-          <span class="text-xs text-gray-500">リストを押すと地図が移動します</span>
+        <!-- ★ここに「お気に入り店舗の登録」ボタンを移動し、テキストを変更しました -->
+        <div class="p-4 border-b bg-gray-50/50 flex flex-wrap justify-between items-center gap-2">
+          <div class="flex items-baseline gap-2">
+            <h2 class="font-bold text-gray-700">登録店舗 (<span id="list-count">0</span>件)</h2>
+            <span class="text-xs text-gray-500 hidden sm:inline">リストを押すと地図が移動します</span>
+          </div>
+          <button id="btn-add" class="hidden px-3 py-1.5 rounded-md text-sm font-bold transition-colors bg-gray-800 text-white shadow hover:bg-gray-900 flex items-center gap-1">
+            <i data-lucide="plus" class="w-4 h-4"></i>お気に入り店舗の登録
+          </button>
         </div>
         <div class="overflow-y-auto max-h-[500px] lg:max-h-[calc(100vh-250px)] p-2">
           <div id="restaurant-list" class="flex flex-col gap-2">
